@@ -10,18 +10,19 @@ package compide;
 import java.awt.BorderLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.imageio.ImageIO;
+import java.io.File;
 import javax.swing.*;
 
 // CLASE PRINCIPAL
 public class InterfazGrafica extends JFrame {
+    
+    JTextArea areaTexto;
+    ManipuladorArchivos manipuladorArchivos;
+    
     public InterfazGrafica(){
         super("CompIDE");
+        manipuladorArchivos = new ManipuladorArchivos();
         this.setSize(800,600);
         this.setIconImage(new ImageIcon(this.getClass().getResource("/res/img/logo.png")).getImage());
         this.setDefaultCloseOperation(EXIT_ON_CLOSE); // Probable a cambio para cerrar correctamente
@@ -47,7 +48,7 @@ public class InterfazGrafica extends JFrame {
         // AÑADIMOS LA PESTAÑA DE AYUDA
         barraMenu.add(this.crearMenuAyuda());
         
-        JTextArea areaTexto = new JTextArea(5, 5);
+        areaTexto = new JTextArea(5, 5);
         areaTexto.setLineWrap(true);
         areaTexto.setWrapStyleWord(true);
         JScrollPane scroll = new JScrollPane(areaTexto);
@@ -75,6 +76,13 @@ public class InterfazGrafica extends JFrame {
         JMenuItem abrir = new JMenuItem("Abrir");
         abrir.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste abrir un archivo");
+            JFileChooser fileChooser = new JFileChooser();
+            int seleccion = fileChooser.showOpenDialog(areaTexto);
+            if (seleccion == JFileChooser.APPROVE_OPTION) {
+               File fichero = fileChooser.getSelectedFile();
+               // Aqui la informacion de apertura
+               manipuladorArchivos.leerTexto(fichero);
+            }
         });
         abrir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
         abrir.setIcon(crearIcono("/res/img/abrir_archivo.png"));
@@ -84,6 +92,8 @@ public class InterfazGrafica extends JFrame {
         JMenuItem guardar = new JMenuItem("Guardar");
         guardar.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste guardar el archivo");
+            JFileChooser fileChooser = new JFileChooser();
+            int seleccion = fileChooser.showSaveDialog(areaTexto);
         });
         guardar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
         guardar.setIcon(crearIcono("/res/img/guardar.png"));
@@ -102,6 +112,19 @@ public class InterfazGrafica extends JFrame {
         JMenuItem cerrarArchivo = new JMenuItem("Cerrar archivo");
         cerrarArchivo.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste cerrar el archivo");
+            int result = JOptionPane.showConfirmDialog(this, "¿Desea cerrar el archivo?", "CompIDE",
+               JOptionPane.YES_NO_OPTION);
+            switch (result) {
+                case JOptionPane.YES_OPTION:
+                    System.out.println("Elegiste si");
+                    break;
+                case JOptionPane.NO_OPTION:
+                    System.out.println("Elegiste no");
+                    break;
+                default:
+                    System.out.println("Elegiste nada");
+                    break;
+            }
         });
         cerrarArchivo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, ActionEvent.CTRL_MASK));
         cerrarArchivo.setIcon(crearIcono("/res/img/cerrar_archivo.png"));
@@ -113,7 +136,20 @@ public class InterfazGrafica extends JFrame {
         JMenuItem salir = new JMenuItem("Salir");
         salir.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste salir");
-            System.exit(0);
+            int result = JOptionPane.showConfirmDialog(this, "¿Desea salir de la aplicación?", "CompIDE",
+               JOptionPane.YES_NO_OPTION);
+            switch (result) {
+                case JOptionPane.YES_OPTION:
+                    System.out.println("Elegiste si");
+                    System.exit(0);
+                    break;
+                case JOptionPane.NO_OPTION:
+                    System.out.println("Elegiste no");
+                    break;
+                default:
+                    System.out.println("Elegiste nada");
+                    break;
+            }
         });
         salir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK));
         salir.setIcon(crearIcono("/res/img/salir.png"));
@@ -223,6 +259,16 @@ public class InterfazGrafica extends JFrame {
         JMenuItem acercaDe = new JMenuItem("Acerca de");
         acercaDe.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste la opcion acerca de");
+            JOptionPane.showMessageDialog(
+                    InterfazGrafica.this, 
+                    "CompIDE versión 1.0\n"
+                            + "Desarrollado por:\n"
+                            + "- Carlos García Gutiérrez\n"
+                            + "- Daniela Yael Rodríguez Reyes\n"
+                            + "- Omar Artturo Ruiz Bernal\n\n"
+                            + "Proyecto final de Compiladores I", 
+                    "Acerca de", 
+                    JOptionPane.INFORMATION_MESSAGE);
         });
         acercaDe.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, ActionEvent.CTRL_MASK));
         acercaDe.setIcon(crearIcono("/res/img/ayuda.png"));

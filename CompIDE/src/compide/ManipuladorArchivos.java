@@ -3,6 +3,7 @@
 package compide;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -41,7 +42,7 @@ public class ManipuladorArchivos {
     }
     
     // METODOS
-    public void leerTexto(String archivo) {
+    public void leerTexto(File archivo) {
         contenido = "";
         String linea;
         Boolean primeraLinea = true;
@@ -56,6 +57,7 @@ public class ManipuladorArchivos {
                     contenido += "\n" + linea;
                 }
             }
+            System.out.println("Contenido: " + contenido);
             file.close();
             buffer.close();
         } catch (FileNotFoundException e){
@@ -73,7 +75,7 @@ public class ManipuladorArchivos {
             pw.print(nuevo);
             fw.close();
             pw.close();
-        } catch (Exception e) {
+        } catch (IOException e) {
             Logger.getLogger(ManipuladorArchivos.class.getName()).log(Level.SEVERE, null, e);
         }
         return resultado;
