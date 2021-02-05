@@ -3,6 +3,7 @@
 // Los pasos para leer o guardar un archivo son 
 // PRIMERO: seteo el archivo
 // SEGUNDO: leo o guardo
+// TERCERO: en caso de leer, consigo la informacion con getTexto()
 package compide;
 
 import java.io.BufferedReader;

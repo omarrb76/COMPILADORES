@@ -25,11 +25,14 @@ public class InterfazGrafica extends JFrame {
     Boolean editado; // Para saber si esta siendo editado
     String titulo; // Para poner de titulo
     Boolean mismoArchivo; // Para guardar en el mismo archivo (Guardar) o pedir que elija un directorio
+    Boolean acabadoDeCerrar;
     
     public InterfazGrafica(){
         super("CompIDE");
         titulo = "CompIDE";
         mismoArchivo = false;
+        editado = false;
+        acabadoDeCerrar = false;
         manipuladorArchivos = new ManipuladorArchivos();
         this.setSize(800,600);
         this.setIconImage(new ImageIcon(this.getClass().getResource("/res/img/logo.png")).getImage());
@@ -68,7 +71,10 @@ public class InterfazGrafica extends JFrame {
                     titulo += " *";
                     setTitle(titulo);
                 }
-                editado = true;
+                if (!acabadoDeCerrar){
+                    editado = true;
+                    acabadoDeCerrar = false;
+                }
             }
             @Override
             public void removeUpdate(DocumentEvent e) {
@@ -76,7 +82,10 @@ public class InterfazGrafica extends JFrame {
                     titulo += " *";
                     setTitle(titulo);
                 }
-                editado = true;
+                if (!acabadoDeCerrar){
+                    editado = true;
+                    acabadoDeCerrar = false;
+                }
             }
             @Override
             public void changedUpdate(DocumentEvent e) {
@@ -84,7 +93,10 @@ public class InterfazGrafica extends JFrame {
                     titulo += " *";
                     setTitle(titulo);
                 }
-                editado = true;
+                if (!acabadoDeCerrar){
+                    editado = true;
+                    acabadoDeCerrar = false;
+                }
             }
         });
         
@@ -104,13 +116,15 @@ public class InterfazGrafica extends JFrame {
         // NUEVO ARCHIVO
         JMenuItem nuevo = new JMenuItem("Nuevo");
         nuevo.addActionListener((ActionEvent e) -> {
-            System.out.println("Seleccionaste nuevo");
-            areaTexto.setEnabled(true);
-            titulo = "CompIDE - Archivo nuevo *";
-            setTitle(titulo);
-            editado = true; // Porque acabamos de crear un nuevo archivo
-            mismoArchivo = false;
-            areaTexto.requestFocus();
+            if (editado) {
+                int result = cerrarArchivo();
+                if (result == JOptionPane.YES_OPTION){
+                    // Cerramos el archivo
+                    cerrarArchivoNuevo();
+                }
+            } else {
+                cerrarArchivoNuevo();
+            }
         });
         nuevo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.CTRL_MASK));
         nuevo.setIcon(crearIcono("/res/img/nuevo_archivo.png"));
@@ -119,21 +133,13 @@ public class InterfazGrafica extends JFrame {
         // ABRIR ARCHIVO
         JMenuItem abrir = new JMenuItem("Abrir");
         abrir.addActionListener((ActionEvent e) -> {
-            System.out.println("Elegiste abrir un archivo");
-            JFileChooser fileChooser = new JFileChooser();
-            int seleccion = fileChooser.showOpenDialog(areaTexto);
-            if (seleccion == JFileChooser.APPROVE_OPTION) {
-               File fichero = fileChooser.getSelectedFile();
-               // Aqui la informacion de apertura
-               areaTexto.setEnabled(false);
-               manipuladorArchivos.setArchivo(fichero);
-               manipuladorArchivos.leerTexto();
-               areaTexto.setText(manipuladorArchivos.getTexto());
-               titulo = "CompIDE - " + fichero.getName();
-               this.setTitle(titulo);
-               areaTexto.setEnabled(true);
-               editado = false; // Lo acabamos de recien abrir, no puede estar editado
-               mismoArchivo = true;
+            if (editado) {
+                int result = cerrarArchivo();
+                if (result == JOptionPane.NO_OPTION){
+                    cerrarArchivoAbrir();
+                }
+            } else {
+                cerrarArchivoAbrir();
             }
         });
         abrir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
@@ -143,7 +149,6 @@ public class InterfazGrafica extends JFrame {
         // GUARDAR ARCHIVO
         JMenuItem guardar = new JMenuItem("Guardar");
         guardar.addActionListener((ActionEvent e) -> {
-            System.out.println("Elegiste guardar el archivo");
             guardarArchivo(mismoArchivo);
         });
         guardar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
@@ -153,7 +158,6 @@ public class InterfazGrafica extends JFrame {
         // GUARDAR COMO ARCHIVO
         JMenuItem guardarComo = new JMenuItem("Guardar como");
         guardarComo.addActionListener((ActionEvent e) -> {
-            System.out.println("Elegiste guardar como el archivo");
             editado = true; // Para que forsozamente nos muestre la ventana de elegir donde guardar
             guardarArchivo(false);
         });
@@ -164,19 +168,16 @@ public class InterfazGrafica extends JFrame {
         // CERRAR ARCHIVO
         JMenuItem cerrarArchivo = new JMenuItem("Cerrar archivo");
         cerrarArchivo.addActionListener((ActionEvent e) -> {
-            System.out.println("Elegiste cerrar el archivo");
-            int result = JOptionPane.showConfirmDialog(this, "¿Desea cerrar el archivo?", "CompIDE",
-               JOptionPane.YES_NO_OPTION);
-            switch (result) {
-                case JOptionPane.YES_OPTION:
-                    System.out.println("Elegiste si");
-                    break;
-                case JOptionPane.NO_OPTION:
-                    System.out.println("Elegiste no");
-                    break;
-                default:
-                    System.out.println("Elegiste nada");
-                    break;
+            int resultado = cerrarArchivo();
+            // Cerramos el archivo
+            if (resultado == JOptionPane.YES_OPTION){
+                acabadoDeCerrar = true;
+                editado = false;
+                mismoArchivo = false;
+                areaTexto.setEnabled(false);
+                areaTexto.setText(null);
+                titulo = "CompIDE";
+                this.setTitle(titulo);
             }
         });
         cerrarArchivo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, ActionEvent.CTRL_MASK));
@@ -188,21 +189,7 @@ public class InterfazGrafica extends JFrame {
         // SALIR
         JMenuItem salir = new JMenuItem("Salir");
         salir.addActionListener((ActionEvent e) -> {
-            System.out.println("Elegiste salir");
-            int result = JOptionPane.showConfirmDialog(this, "¿Desea salir de la aplicación?", "CompIDE",
-               JOptionPane.YES_NO_OPTION);
-            switch (result) {
-                case JOptionPane.YES_OPTION:
-                    System.out.println("Elegiste si");
-                    System.exit(0);
-                    break;
-                case JOptionPane.NO_OPTION:
-                    System.out.println("Elegiste no");
-                    break;
-                default:
-                    System.out.println("Elegiste nada");
-                    break;
-            }
+            cerrarArchivo();
         });
         salir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK));
         salir.setIcon(crearIcono("/res/img/salir.png"));
@@ -340,26 +327,92 @@ public class InterfazGrafica extends JFrame {
     }
     
     // Este método es para los ActionListener de los botones de guardar, para no repetir código
-    private void guardarArchivo(Boolean guardarComo){
-        if (editado) {
+    private int guardarArchivo(Boolean guardarComo){
+       int result = JFileChooser.CANCEL_OPTION;
+        if (editado && areaTexto.isEnabled()) { // Tenemos que corroborar que exista un archivo a guardar, por eso puse el areaTexto.isEnabled();
             if (!guardarComo) {
                 JFileChooser fileChooser = new JFileChooser();
                 int seleccion = fileChooser.showSaveDialog(areaTexto);
                 if (seleccion == JFileChooser.APPROVE_OPTION) {
                    File fichero = fileChooser.getSelectedFile();
-                   // Aqui la informacion de guardado
                    manipuladorArchivos.setArchivo(fichero);
-                   manipuladorArchivos.escribirTexto(areaTexto.getText());
-                   editado = false; // Lo acabamos de recien guardar, no puede estar editado
-                   titulo = "CompIDE - " + fichero.getName();
-                   this.setTitle(titulo);
+                } else {
+                   return result;
                 }
             }
+            result = JFileChooser.APPROVE_OPTION;
             manipuladorArchivos.escribirTexto(areaTexto.getText());
             editado = false; // Lo acabamos de recien guardar, no puede estar editado
             titulo = "CompIDE - " + manipuladorArchivos.getArchivo().getName();
             this.setTitle(titulo);
             mismoArchivo = true;
+        }
+        return result;
+    }
+    
+    // Este método se invoca cuando cerramos el archivo o aplicacion sin que hayamos guardado el archivo
+    // Regresa la opcion que elijio el usuario, para saber si salir de la aplicacion o no
+    private int cerrarArchivo(){
+        int opcion = JOptionPane.YES_OPTION;
+        if (areaTexto.isEnabled() && editado){ // Significa que hay un archivo ahi
+            String title = "No se ha guardado el archivo: ";
+            File nombreArchivo = manipuladorArchivos.getArchivo();
+            if (nombreArchivo != null){ // Si existe el archivo
+                title += nombreArchivo.getName() + "\n" + "¿Desea guardarlo?";
+            } else {
+                title += "Archivo nuevo" + "\n" + "¿Desea guardarlo?";
+            }
+            int result = JOptionPane.showConfirmDialog(this, title, "CompIDE", JOptionPane.YES_NO_OPTION);
+            switch (result) {
+                case JOptionPane.YES_OPTION:
+                    System.out.println("Entre en la opcion SI del panel");
+                    result = guardarArchivo(mismoArchivo);
+                    if (result == JFileChooser.CANCEL_OPTION){
+                        System.out.println("Entre en cancelar");
+                        opcion = JOptionPane.NO_OPTION;
+                    } else if (result == JFileChooser.APPROVE_OPTION){
+                        System.out.println("Entre en aceptar");
+                        opcion = JOptionPane.YES_OPTION;
+                    }
+                    break;
+                case JOptionPane.NO_OPTION:
+                    opcion = JOptionPane.YES_OPTION;
+                    break;
+                default:
+                    opcion = JOptionPane.NO_OPTION;
+                    break;
+            }
+        }
+        return opcion;
+    }
+    
+    // Metodo que cree para que no repitamos codigo
+    private void cerrarArchivoNuevo(){
+        areaTexto.setText(null);
+        areaTexto.setEnabled(true);
+        titulo = "CompIDE - Archivo nuevo *";
+        setTitle(titulo);
+        editado = true; // Porque acabamos de crear un nuevo archivo
+        mismoArchivo = false;
+        manipuladorArchivos.setArchivo(null); // No tenemos ningun archivo
+        areaTexto.requestFocus();
+    }
+    
+    private void cerrarArchivoAbrir(){
+        JFileChooser fileChooser = new JFileChooser();
+        int seleccion = fileChooser.showOpenDialog(areaTexto);
+        if (seleccion == JFileChooser.APPROVE_OPTION) {
+           File fichero = fileChooser.getSelectedFile();
+           // Aqui la informacion de apertura
+           areaTexto.setEnabled(false);
+           manipuladorArchivos.setArchivo(fichero);
+           manipuladorArchivos.leerTexto();
+           areaTexto.setText(manipuladorArchivos.getTexto());
+           titulo = "CompIDE - " + fichero.getName();
+           this.setTitle(titulo);
+           areaTexto.setEnabled(true);
+           editado = false; // Lo acabamos de recien abrir, no puede estar editado
+           mismoArchivo = true;
         }
     }
 }
