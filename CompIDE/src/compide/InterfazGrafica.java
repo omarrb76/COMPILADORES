@@ -13,15 +13,23 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 // CLASE PRINCIPAL
 public class InterfazGrafica extends JFrame {
     
-    JTextArea areaTexto;
-    ManipuladorArchivos manipuladorArchivos;
+    // ATRIBUTOS
+    JTextArea areaTexto; // El area donde el usuario escribirá
+    ManipuladorArchivos manipuladorArchivos; // Para leer y guardar el archivo
+    Boolean editado; // Para saber si esta siendo editado
+    String titulo; // Para poner de titulo
+    Boolean mismoArchivo; // Para guardar en el mismo archivo (Guardar) o pedir que elija un directorio
     
     public InterfazGrafica(){
         super("CompIDE");
+        titulo = "CompIDE";
+        mismoArchivo = false;
         manipuladorArchivos = new ManipuladorArchivos();
         this.setSize(800,600);
         this.setIconImage(new ImageIcon(this.getClass().getResource("/res/img/logo.png")).getImage());
@@ -51,6 +59,36 @@ public class InterfazGrafica extends JFrame {
         areaTexto = new JTextArea(5, 5);
         areaTexto.setLineWrap(true);
         areaTexto.setWrapStyleWord(true);
+        areaTexto.setEnabled(false);
+        
+        areaTexto.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                if (!editado){
+                    titulo += " *";
+                    setTitle(titulo);
+                }
+                editado = true;
+            }
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                if (!editado){
+                    titulo += " *";
+                    setTitle(titulo);
+                }
+                editado = true;
+            }
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                if (!editado){
+                    titulo += " *";
+                    setTitle(titulo);
+                }
+                editado = true;
+            }
+        });
+        
+        
         JScrollPane scroll = new JScrollPane(areaTexto);
         this.getContentPane().add(barraMenu, BorderLayout.NORTH);
         this.getContentPane().add(areaTexto, BorderLayout.CENTER);
@@ -67,6 +105,12 @@ public class InterfazGrafica extends JFrame {
         JMenuItem nuevo = new JMenuItem("Nuevo");
         nuevo.addActionListener((ActionEvent e) -> {
             System.out.println("Seleccionaste nuevo");
+            areaTexto.setEnabled(true);
+            titulo = "CompIDE - Archivo nuevo *";
+            setTitle(titulo);
+            editado = true; // Porque acabamos de crear un nuevo archivo
+            mismoArchivo = false;
+            areaTexto.requestFocus();
         });
         nuevo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.CTRL_MASK));
         nuevo.setIcon(crearIcono("/res/img/nuevo_archivo.png"));
@@ -81,7 +125,15 @@ public class InterfazGrafica extends JFrame {
             if (seleccion == JFileChooser.APPROVE_OPTION) {
                File fichero = fileChooser.getSelectedFile();
                // Aqui la informacion de apertura
-               manipuladorArchivos.leerTexto(fichero);
+               areaTexto.setEnabled(false);
+               manipuladorArchivos.setArchivo(fichero);
+               manipuladorArchivos.leerTexto();
+               areaTexto.setText(manipuladorArchivos.getTexto());
+               titulo = "CompIDE - " + fichero.getName();
+               this.setTitle(titulo);
+               areaTexto.setEnabled(true);
+               editado = false; // Lo acabamos de recien abrir, no puede estar editado
+               mismoArchivo = true;
             }
         });
         abrir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
@@ -92,8 +144,7 @@ public class InterfazGrafica extends JFrame {
         JMenuItem guardar = new JMenuItem("Guardar");
         guardar.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste guardar el archivo");
-            JFileChooser fileChooser = new JFileChooser();
-            int seleccion = fileChooser.showSaveDialog(areaTexto);
+            guardarArchivo(mismoArchivo);
         });
         guardar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
         guardar.setIcon(crearIcono("/res/img/guardar.png"));
@@ -103,6 +154,8 @@ public class InterfazGrafica extends JFrame {
         JMenuItem guardarComo = new JMenuItem("Guardar como");
         guardarComo.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste guardar como el archivo");
+            editado = true; // Para que forsozamente nos muestre la ventana de elegir donde guardar
+            guardarArchivo(false);
         });
         guardarComo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK));
         guardarComo.setIcon(crearIcono("/res/img/guardar.png"));
@@ -284,5 +337,29 @@ public class InterfazGrafica extends JFrame {
         Image newimg = image.getScaledInstance(15, 15, java.awt.Image.SCALE_SMOOTH); // scale it the smooth way 
         i = new ImageIcon(newimg);  // transform it back
         return i;
+    }
+    
+    // Este método es para los ActionListener de los botones de guardar, para no repetir código
+    private void guardarArchivo(Boolean guardarComo){
+        if (editado) {
+            if (!guardarComo) {
+                JFileChooser fileChooser = new JFileChooser();
+                int seleccion = fileChooser.showSaveDialog(areaTexto);
+                if (seleccion == JFileChooser.APPROVE_OPTION) {
+                   File fichero = fileChooser.getSelectedFile();
+                   // Aqui la informacion de guardado
+                   manipuladorArchivos.setArchivo(fichero);
+                   manipuladorArchivos.escribirTexto(areaTexto.getText());
+                   editado = false; // Lo acabamos de recien guardar, no puede estar editado
+                   titulo = "CompIDE - " + fichero.getName();
+                   this.setTitle(titulo);
+                }
+            }
+            manipuladorArchivos.escribirTexto(areaTexto.getText());
+            editado = false; // Lo acabamos de recien guardar, no puede estar editado
+            titulo = "CompIDE - " + manipuladorArchivos.getArchivo().getName();
+            this.setTitle(titulo);
+            mismoArchivo = true;
+        }
     }
 }

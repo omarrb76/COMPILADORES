@@ -1,5 +1,8 @@
 // Esta clase lee los archivos y escribe sobre ellos
 // tiene métodos para obtener lo que dice un archivo y para escribir sobre el
+// Los pasos para leer o guardar un archivo son 
+// PRIMERO: seteo el archivo
+// SEGUNDO: leo o guardo
 package compide;
 
 import java.io.BufferedReader;
@@ -16,12 +19,12 @@ public class ManipuladorArchivos {
     
     // ATRIBUTOS
     private String contenido;
-    private String nombreArchivo;
+    private File archivo;
     
     // CONSTRUCTOR
     public ManipuladorArchivos() {
         contenido = "";
-        nombreArchivo = "";
+        archivo = null;
     }
     
     // SETTERS AND GETTERS
@@ -33,16 +36,16 @@ public class ManipuladorArchivos {
         return contenido;
     }
     
-    public void setNombreArchivo(String nuevo) {
-        nombreArchivo = nuevo;
+    public void setArchivo(File nuevo) {
+        archivo = nuevo;
     }
     
-    public String getNombreArchivo() {
-        return nombreArchivo;
+    public File getArchivo() {
+        return archivo;
     }
     
     // METODOS
-    public void leerTexto(File archivo) {
+    public void leerTexto() {
         contenido = "";
         String linea;
         Boolean primeraLinea = true;
@@ -57,7 +60,6 @@ public class ManipuladorArchivos {
                     contenido += "\n" + linea;
                 }
             }
-            System.out.println("Contenido: " + contenido);
             file.close();
             buffer.close();
         } catch (FileNotFoundException e){
@@ -70,7 +72,7 @@ public class ManipuladorArchivos {
     public Boolean escribirTexto(String nuevo){
         Boolean resultado = false; // Fracaso
         try {
-            FileWriter fw = new FileWriter(nombreArchivo);
+            FileWriter fw = new FileWriter(archivo);
             PrintWriter pw = new PrintWriter(fw);
             pw.print(nuevo);
             fw.close();
