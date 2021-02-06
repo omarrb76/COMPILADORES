@@ -202,7 +202,7 @@ public class InterfazGrafica extends JFrame {
     
     private JMenu crearMenuEditar() {
         JMenu editar = new JMenu("Editar");
-        editar.setMnemonic('E');
+        editar.setMnemonic('E'); // ALT + E
         
         // DESHACER
         JMenuItem deshacer = new JMenuItem("Deshacer");
@@ -228,6 +228,7 @@ public class InterfazGrafica extends JFrame {
         JMenuItem cortar = new JMenuItem("Cortar");
         cortar.addActionListener((ActionEvent e) -> {
             System.out.println("Seleccionaste cortar");
+            areaTexto.cut();
         });
         cortar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, ActionEvent.CTRL_MASK));
         cortar.setIcon(crearIcono("/res/img/cortar.png"));
@@ -319,6 +320,8 @@ public class InterfazGrafica extends JFrame {
         return ayuda;
     }
     
+    // ESTE MÉTODO CREA UN ICONO CON EL ARCHIVO QUE LE MANDEMOS
+    // USADO PARA PONERLE ICONO A LOS JMENUITEM DEL MENUBAR
     private ImageIcon crearIcono(String archivo){
         ImageIcon i;
         i = new ImageIcon((getClass().getResource(archivo)));
@@ -330,24 +333,24 @@ public class InterfazGrafica extends JFrame {
     
     // Este método es para los ActionListener de los botones de guardar, para no repetir código
     private int guardarArchivo(Boolean guardarComo){
-       int result = JFileChooser.CANCEL_OPTION;
+       int result = JFileChooser.CANCEL_OPTION; // Por default lo tengo aqui, que significa que el usuario no lo quiere guardar
         if (editado && areaTexto.isEnabled()) { // Tenemos que corroborar que exista un archivo a guardar, por eso puse el areaTexto.isEnabled();
-            if (!guardarComo) {
+            if (!guardarComo) { // si no es el mismo archivo, tenemos que preguntar donde lo quiere guardar
                 JFileChooser fileChooser = new JFileChooser();
                 int seleccion = fileChooser.showSaveDialog(areaTexto);
-                if (seleccion == JFileChooser.APPROVE_OPTION) {
+                if (seleccion == JFileChooser.APPROVE_OPTION) { // Si elige donde guardarlo y le da en aceptar
                    File fichero = fileChooser.getSelectedFile();
                    manipuladorArchivos.setArchivo(fichero);
-                } else {
+                } else { // le dio a cancelar, no se hace nada y se devuelve el CANCEL_OPTION que estaba por default
                    return result;
                 }
             }
-            result = JFileChooser.APPROVE_OPTION;
+            result = JFileChooser.APPROVE_OPTION; // Se cambia la opcion a que le dio en APROVAR
             manipuladorArchivos.escribirTexto(areaTexto.getText());
             editado = false; // Lo acabamos de recien guardar, no puede estar editado
-            titulo = "CompIDE - " + manipuladorArchivos.getArchivo().getName();
+            titulo = "CompIDE - " + manipuladorArchivos.getArchivo().getName(); // Ponemos el titulo de la ventana
             this.setTitle(titulo);
-            mismoArchivo = true;
+            mismoArchivo = true; // Estamos trabajando sobre el mismo archivo
         }
         return result;
     }
@@ -355,33 +358,30 @@ public class InterfazGrafica extends JFrame {
     // Este método se invoca cuando cerramos el archivo o aplicacion sin que hayamos guardado el archivo
     // Regresa la opcion que elijio el usuario, para saber si salir de la aplicacion o no
     private int cerrarArchivo(){
-        int opcion = JOptionPane.YES_OPTION;
+        int opcion = JOptionPane.YES_OPTION; // Por default es que si queremos cerrar el archivo
         if (areaTexto.isEnabled() && editado){ // Significa que hay un archivo ahi
             String title = "No se ha guardado el archivo: ";
-            File nombreArchivo = manipuladorArchivos.getArchivo();
+            File nombreArchivo = manipuladorArchivos.getArchivo(); // Conseguimos el archivo (si es que existe)
             if (nombreArchivo != null){ // Si existe el archivo
-                title += nombreArchivo.getName() + "\n" + "¿Desea guardarlo?";
+                title += nombreArchivo.getName() + "\n" + "¿Desea guardarlo?"; // Titulo sera el nombre del archivo
             } else {
-                title += "Archivo nuevo" + "\n" + "¿Desea guardarlo?";
+                title += "Archivo nuevo" + "\n" + "¿Desea guardarlo?"; // Titulo sera "archivo nuevo"
             }
-            int result = JOptionPane.showConfirmDialog(this, title, "CompIDE", JOptionPane.YES_NO_OPTION);
+            int result = JOptionPane.showConfirmDialog(this, title, "CompIDE", JOptionPane.YES_NO_OPTION); // Mostramos un panel para elegir si lo quiere guardar
             switch (result) {
                 case JOptionPane.YES_OPTION:
-                    System.out.println("Entre en la opcion SI del panel");
+                    // Eligio que si lo quiere guardar
                     result = guardarArchivo(mismoArchivo);
-                    if (result == JFileChooser.CANCEL_OPTION){
-                        System.out.println("Entre en cancelar");
-                        opcion = JOptionPane.NO_OPTION;
-                    } else if (result == JFileChooser.APPROVE_OPTION){
-                        System.out.println("Entre en aceptar");
-                        opcion = JOptionPane.YES_OPTION;
-                    }
-                    break;
+                    if (result == JFileChooser.CANCEL_OPTION){ // Le dio en cancelar (al momento de elegir donde guardar)
+                        opcion = JOptionPane.NO_OPTION; // No se hace nada
+                    } else if (result == JFileChooser.APPROVE_OPTION){ // Le dio en aceptar (al momento de guardar)
+                        opcion = JOptionPane.YES_OPTION; // Se cierra el archivo
+                    }   break;
                 case JOptionPane.NO_OPTION:
-                    opcion = JOptionPane.YES_OPTION;
+                    opcion = JOptionPane.YES_OPTION; // Se cierra el archivo
                     break;
                 default:
-                    opcion = JOptionPane.NO_OPTION;
+                    opcion = JOptionPane.NO_OPTION; // NO hago nada
                     break;
             }
         }
@@ -389,17 +389,20 @@ public class InterfazGrafica extends JFrame {
     }
     
     // Metodo que cree para que no repitamos codigo
+    // Este método se llama para ahorrar codigo en los eventos del boton nuevo
     private void cerrarArchivoNuevo(){
-        areaTexto.setText(null);
-        areaTexto.setEnabled(true);
-        titulo = "CompIDE - Archivo nuevo *";
+        areaTexto.setText(null); // Borramos el texto
+        areaTexto.setEnabled(true); // Activamos el area de texto
+        titulo = "CompIDE - Archivo nuevo *"; // Cambiamos el titulo
         setTitle(titulo);
         editado = true; // Porque acabamos de crear un nuevo archivo
-        mismoArchivo = false;
+        mismoArchivo = false; // No estamos trabajando sobre el mismo archivo
         manipuladorArchivos.setArchivo(null); // No tenemos ningun archivo
-        areaTexto.requestFocus();
+        areaTexto.requestFocus(); // Pedimos el focus en el area de texto
     }
     
+    // Método para ahorrar código dentro del evento del botón
+    // Abrir, sirve para ver que archivo queremos abrir
     private void cerrarArchivoAbrir(){
         JFileChooser fileChooser = new JFileChooser();
         int seleccion = fileChooser.showOpenDialog(areaTexto);

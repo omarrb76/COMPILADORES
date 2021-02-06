@@ -7,6 +7,7 @@ import javax.swing.UnsupportedLookAndFeelException;
 
 public class CompIDE {
     public static void main(String[] args) {
+        // CAMBIAMOS LA APARIENCIA
         try {
             // WINDOWS
             // UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
@@ -16,11 +17,7 @@ public class CompIDE {
             Logger.getLogger(CompIDE.class.getName()).log(Level.SEVERE, null, ex);
         }
         
+        // EMPIEZA EL PROGRAMA
         InterfazGrafica ide = new InterfazGrafica();
-        /*ManipuladorArchivos m = new ManipuladorArchivos();
-        m.leerTexto("src/res/prueba.txt");
-        System.out.println(m.getTexto());
-        m.setNombreArchivo("src/res/resultado.txt");
-        m.escribirTexto("Soy omar y estoy probando mi programa\nEspero les guste mucho");*/
     }
 }
