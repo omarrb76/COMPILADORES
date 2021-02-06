@@ -11,6 +11,8 @@ import java.awt.BorderLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -25,7 +27,7 @@ public class InterfazGrafica extends JFrame {
     Boolean editado; // Para saber si esta siendo editado
     String titulo; // Para poner de titulo
     Boolean mismoArchivo; // Para guardar en el mismo archivo (Guardar) o pedir que elija un directorio
-    Boolean acabadoDeCerrar;
+    Boolean acabadoDeCerrar; // Para que se controle un evento del texto dentro de areaTexto
     
     public InterfazGrafica(){
         super("CompIDE");
@@ -36,7 +38,7 @@ public class InterfazGrafica extends JFrame {
         manipuladorArchivos = new ManipuladorArchivos();
         this.setSize(800,600);
         this.setIconImage(new ImageIcon(this.getClass().getResource("/res/img/logo.png")).getImage());
-        this.setDefaultCloseOperation(EXIT_ON_CLOSE); // Probable a cambio para cerrar correctamente
+        this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE); // Para que no haga nada en esto, más bien se ejecuta una función que viene más abajo
         this.setLocationRelativeTo(null);
         this.iniciarComponentes();
     }
@@ -59,51 +61,34 @@ public class InterfazGrafica extends JFrame {
         // AÑADIMOS LA PESTAÑA DE AYUDA
         barraMenu.add(this.crearMenuAyuda());
         
+        // CREAMOS EL AREA DE TEXTO
         areaTexto = new JTextArea(5, 5);
         areaTexto.setLineWrap(true);
         areaTexto.setWrapStyleWord(true);
         areaTexto.setEnabled(false);
         
+        // ESTE PEDAZO DE CÓDIGO CHECA SI HUBO UN CAMBIO EN EL CONTENIDO DEL AREA DE TEXTO
         areaTexto.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                if (!editado){
-                    titulo += " *";
-                    setTitle(titulo);
-                }
-                if (!acabadoDeCerrar){
-                    editado = true;
-                    acabadoDeCerrar = false;
-                }
+                checarCambioTexto();
             }
             @Override
             public void removeUpdate(DocumentEvent e) {
-                if (!editado){
-                    titulo += " *";
-                    setTitle(titulo);
-                }
-                if (!acabadoDeCerrar){
-                    editado = true;
-                    acabadoDeCerrar = false;
-                }
+                checarCambioTexto();
             }
             @Override
             public void changedUpdate(DocumentEvent e) {
-                if (!editado){
-                    titulo += " *";
-                    setTitle(titulo);
-                }
-                if (!acabadoDeCerrar){
-                    editado = true;
-                    acabadoDeCerrar = false;
-                }
+                checarCambioTexto();
             }
         });
         
-        
+        // PARA QUE EL USUARIO TENGA UN SCROLLER PARA RECORER EL TEXTO EN CASO DE SER MUCHO
         JScrollPane scroll = new JScrollPane(areaTexto);
         this.getContentPane().add(barraMenu, BorderLayout.NORTH);
         this.getContentPane().add(areaTexto, BorderLayout.CENTER);
+        
+        // AGREGAMOS LA BARRA DE MENU Y PONEMOS COMO VISIBLE NUESTRO FRAME
         this.setJMenuBar(barraMenu);
         this.setVisible(true);
     }
@@ -111,22 +96,23 @@ public class InterfazGrafica extends JFrame {
     // LOS DIFERENTES COMPONENTES DE LOS MENUS
     private JMenu crearMenuArchivo() {
         JMenu archivo = new JMenu("Archivo");
-        archivo.setMnemonic('A');
+        archivo.setMnemonic('A'); // ALT + A
         
         // NUEVO ARCHIVO
         JMenuItem nuevo = new JMenuItem("Nuevo");
+        // LAS FUNCIONES DE LOS BOTONES ESTAN SUPER CONFUSAS, ASI QUE AL MENOS QUE QUIERAS SABER QUE
+        // RAYOS ESTA PASANDO, LO DEJARE A QUIEN GUSTE
         nuevo.addActionListener((ActionEvent e) -> {
             if (editado) {
                 int result = cerrarArchivo();
                 if (result == JOptionPane.YES_OPTION){
-                    // Cerramos el archivo
                     cerrarArchivoNuevo();
                 }
             } else {
                 cerrarArchivoNuevo();
             }
         });
-        nuevo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.CTRL_MASK));
+        nuevo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.CTRL_MASK)); // CTRL + N
         nuevo.setIcon(crearIcono("/res/img/nuevo_archivo.png"));
         archivo.add(nuevo);
         
@@ -142,7 +128,7 @@ public class InterfazGrafica extends JFrame {
                 cerrarArchivoAbrir();
             }
         });
-        abrir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
+        abrir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK)); // CTRL + O
         abrir.setIcon(crearIcono("/res/img/abrir_archivo.png"));
         archivo.add(abrir);
         
@@ -151,7 +137,7 @@ public class InterfazGrafica extends JFrame {
         guardar.addActionListener((ActionEvent e) -> {
             guardarArchivo(mismoArchivo);
         });
-        guardar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
+        guardar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK)); // CTRL + S
         guardar.setIcon(crearIcono("/res/img/guardar.png"));
         archivo.add(guardar);
         
@@ -161,7 +147,7 @@ public class InterfazGrafica extends JFrame {
             editado = true; // Para que forsozamente nos muestre la ventana de elegir donde guardar
             guardarArchivo(false);
         });
-        guardarComo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK));
+        guardarComo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK)); // CTRL + SHIFT + S
         guardarComo.setIcon(crearIcono("/res/img/guardar.png"));
         archivo.add(guardarComo);
         
@@ -180,7 +166,7 @@ public class InterfazGrafica extends JFrame {
                 this.setTitle(titulo);
             }
         });
-        cerrarArchivo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, ActionEvent.CTRL_MASK));
+        cerrarArchivo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, ActionEvent.CTRL_MASK)); // CTRL + B
         cerrarArchivo.setIcon(crearIcono("/res/img/cerrar_archivo.png"));
         archivo.add(cerrarArchivo);
         
@@ -189,11 +175,27 @@ public class InterfazGrafica extends JFrame {
         // SALIR
         JMenuItem salir = new JMenuItem("Salir");
         salir.addActionListener((ActionEvent e) -> {
-            cerrarArchivo();
+            int resultado = cerrarArchivo();
+            if (resultado == JOptionPane.YES_OPTION){
+                // Salimos de la aplicacion
+                System.exit(0);
+            }
         });
-        salir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK));
+        salir.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK)); // CTRL + SHIFT + Q
         salir.setIcon(crearIcono("/res/img/salir.png"));
         archivo.add(salir);
+        
+        // SALIR CON LA TACHA DE LA APLICACION
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                int resultado = cerrarArchivo();
+                if (resultado == JOptionPane.YES_OPTION){
+                    // Salimos de la aplicacion
+                    System.exit(0);
+                }
+            }
+        });
         
         return archivo;
     }
@@ -413,6 +415,18 @@ public class InterfazGrafica extends JFrame {
            areaTexto.setEnabled(true);
            editado = false; // Lo acabamos de recien abrir, no puede estar editado
            mismoArchivo = true;
+        }
+    }
+    
+    // FUNCION QUE PERTENECE AL CAMBIO DE TEXTO DEL areaTexto
+    private void checarCambioTexto(){
+        if (!editado){
+            titulo += " *";
+            setTitle(titulo);
+        }
+        if (!acabadoDeCerrar){
+            editado = true;
+            acabadoDeCerrar = false;
         }
     }
 }
