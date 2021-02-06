@@ -14,9 +14,14 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.UndoManager;
 
 // CLASE PRINCIPAL
 public class InterfazGrafica extends JFrame {
@@ -28,6 +33,7 @@ public class InterfazGrafica extends JFrame {
     String titulo; // Para poner de titulo
     Boolean mismoArchivo; // Para guardar en el mismo archivo (Guardar) o pedir que elija un directorio
     Boolean acabadoDeCerrar; // Para que se controle un evento del texto dentro de areaTexto
+    UndoManager undoManager; // Para poder rehacer o deshacer los cambios del JTextArea
     
     public InterfazGrafica(){
         super("CompIDE");
@@ -36,6 +42,7 @@ public class InterfazGrafica extends JFrame {
         editado = false;
         acabadoDeCerrar = false;
         manipuladorArchivos = new ManipuladorArchivos();
+        undoManager = new UndoManager();
         this.setSize(800,600);
         this.setIconImage(new ImageIcon(this.getClass().getResource("/res/img/logo.png")).getImage());
         this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE); // Para que no haga nada en esto, más bien se ejecuta una función que viene más abajo
@@ -81,6 +88,11 @@ public class InterfazGrafica extends JFrame {
             public void changedUpdate(DocumentEvent e) {
                 checarCambioTexto();
             }
+        });
+        
+        // ESTE PEDAZO DE CÓDIGO AGREGA EL UNDOMANAGER AL areaTexto
+        areaTexto.getDocument().addUndoableEditListener((UndoableEditEvent evt) -> {
+            undoManager.addEdit(evt.getEdit());
         });
         
         // PARA QUE EL USUARIO TENGA UN SCROLLER PARA RECORER EL TEXTO EN CASO DE SER MUCHO
@@ -207,18 +219,30 @@ public class InterfazGrafica extends JFrame {
         // DESHACER
         JMenuItem deshacer = new JMenuItem("Deshacer");
         deshacer.addActionListener((ActionEvent e) -> {
-            System.out.println("Seleccionaste deshacer");
+            try {
+                if (undoManager.canUndo()) {
+                    undoManager.undo();
+                }
+            } catch (CannotUndoException ex) {
+                Logger.getLogger(ManipuladorArchivos.class.getName()).log(Level.SEVERE, null, ex);
+            }
         });
-        deshacer.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, ActionEvent.CTRL_MASK));
+        deshacer.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, ActionEvent.CTRL_MASK)); // CTRL + Z
         deshacer.setIcon(crearIcono("/res/img/deshacer.png"));
         editar.add(deshacer);
         
         // REHACER
         JMenuItem rehacer = new JMenuItem("Rehacer");
         rehacer.addActionListener((ActionEvent e) -> {
-            System.out.println("Seleccionaste rehacer");
+            try {
+                if (undoManager.canRedo()) {
+                    undoManager.redo();
+                }
+            } catch (CannotUndoException ex) {
+                Logger.getLogger(ManipuladorArchivos.class.getName()).log(Level.SEVERE, null, ex);
+            }
         });
-        rehacer.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK));
+        rehacer.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK)); // CTRL + SHIFT + Z
         rehacer.setIcon(crearIcono("/res/img/rehacer.png"));
         editar.add(rehacer);
         
@@ -227,28 +251,27 @@ public class InterfazGrafica extends JFrame {
         // CORTAR
         JMenuItem cortar = new JMenuItem("Cortar");
         cortar.addActionListener((ActionEvent e) -> {
-            System.out.println("Seleccionaste cortar");
             areaTexto.cut();
         });
-        cortar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, ActionEvent.CTRL_MASK));
+        cortar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, ActionEvent.CTRL_MASK)); // CTRL + X
         cortar.setIcon(crearIcono("/res/img/cortar.png"));
         editar.add(cortar);
         
         // PEGAR
         JMenuItem pegar = new JMenuItem("Pegar");
         pegar.addActionListener((ActionEvent e) -> {
-            System.out.println("Seleccionaste pegar");
+            areaTexto.paste();
         });
-        pegar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK));
+        pegar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK)); // CTRL + V
         pegar.setIcon(crearIcono("/res/img/pegar.png"));
         editar.add(pegar);
         
         // COPIAR
         JMenuItem copiar = new JMenuItem("Copiar");
         copiar.addActionListener((ActionEvent e) -> {
-            System.out.println("Seleccionaste copiar");
+            areaTexto.copy();
         });
-        copiar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK));
+        copiar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK)); // CTRL + C
         copiar.setIcon(crearIcono("/res/img/copiar.png"));
         editar.add(copiar);
         
@@ -257,9 +280,9 @@ public class InterfazGrafica extends JFrame {
         // SELECCIONAR TODO
         JMenuItem seleccionarTodo = new JMenuItem("Seleccionar Todo");
         seleccionarTodo.addActionListener((ActionEvent e) -> {
-            System.out.println("Seleccionaste seleccionar Todo");
+            areaTexto.selectAll();
         });
-        seleccionarTodo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, ActionEvent.CTRL_MASK));
+        seleccionarTodo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, ActionEvent.CTRL_MASK)); // CTRL + A
         seleccionarTodo.setIcon(crearIcono("/res/img/seleccionar.png"));
         editar.add(seleccionarTodo);
         
@@ -268,13 +291,13 @@ public class InterfazGrafica extends JFrame {
     
     private JMenu crearMenuFormato(){
         JMenu formato = new JMenu("Formato");
-        formato.setMnemonic('F');
+        formato.setMnemonic('F'); // ALT + F
         
         JMenuItem opcion1 = new JMenuItem("Opcion 1");
         opcion1.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste la opcion 1");
         });
-        opcion1.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.CTRL_MASK));
+        opcion1.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.CTRL_MASK)); // CTRL + L
         formato.add(opcion1);
         
         return formato;
@@ -282,13 +305,13 @@ public class InterfazGrafica extends JFrame {
     
     private JMenu crearMenuCompilar(){
         JMenu compilar = new JMenu("Compilar");
-        compilar.setMnemonic('C');
+        compilar.setMnemonic('C'); // ALT + C
         
         JMenuItem compile = new JMenuItem("Compila");
         compile.addActionListener((ActionEvent e) -> {
             System.out.println("Elegiste la opcion compila");
         });
-        compile.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK));
+        compile.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK)); // CTRL + SHIFT + C
         compile.setIcon(crearIcono("/res/img/compilar.png"));
         compilar.add(compile);
         
@@ -297,7 +320,7 @@ public class InterfazGrafica extends JFrame {
     
     private JMenu crearMenuAyuda(){
         JMenu ayuda = new JMenu("Ayuda");
-        ayuda.setMnemonic('y');
+        ayuda.setMnemonic('y'); // ALT + Y
         
         JMenuItem acercaDe = new JMenuItem("Acerca de");
         acercaDe.addActionListener((ActionEvent e) -> {
@@ -313,7 +336,7 @@ public class InterfazGrafica extends JFrame {
                     "Acerca de", 
                     JOptionPane.INFORMATION_MESSAGE);
         });
-        acercaDe.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, ActionEvent.CTRL_MASK));
+        acercaDe.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, ActionEvent.CTRL_MASK)); // CTRL + H
         acercaDe.setIcon(crearIcono("/res/img/ayuda.png"));
         ayuda.add(acercaDe);
         
