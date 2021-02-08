@@ -20,7 +20,6 @@ import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.UndoableEditEvent;
-import javax.swing.text.Caret;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 
@@ -28,7 +27,7 @@ import javax.swing.undo.UndoManager;
 public class InterfazGrafica extends JFrame {
     
     // ATRIBUTOS
-    JTextArea areaTexto; // El area donde el usuario escribirá
+    JTextPane areaTexto; // El area donde el usuario escribirá
     ManipuladorArchivos manipuladorArchivos; // Para leer y guardar el archivo
     Boolean editado; // Para saber si esta siendo editado
     String titulo; // Para poner de titulo
@@ -70,9 +69,9 @@ public class InterfazGrafica extends JFrame {
         barraMenu.add(this.crearMenuAyuda());
         
         // CREAMOS EL AREA DE TEXTO
-        areaTexto = new JTextArea(5, 5);
-        areaTexto.setLineWrap(true);
-        areaTexto.setWrapStyleWord(true);
+        areaTexto = new JTextPane();
+        //areaTexto.setLineWrap(true);
+        //areaTexto.setWrapStyleWord(true);
         areaTexto.setEnabled(false);
         
         // ESTE PEDAZO DE CÓDIGO CHECA SI HUBO UN CAMBIO EN EL CONTENIDO DEL AREA DE TEXTO
@@ -286,35 +285,6 @@ public class InterfazGrafica extends JFrame {
         seleccionarTodo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, ActionEvent.CTRL_MASK)); // CTRL + A
         seleccionarTodo.setIcon(crearIcono("/res/img/seleccionar.png"));
         editar.add(seleccionarTodo);
-        
-        editar.add(new JSeparator()); // Una rayita separadora.
-        
-        // BUSCAR
-        JMenuItem buscar = new JMenuItem("Buscar");
-        buscar.addActionListener((ActionEvent e) -> {
-            if (areaTexto.isEnabled()){
-                String textoABuscar = areaTexto.getSelectedText();
-                if (textoABuscar == null) {
-                    textoABuscar = "";
-                }
-                textoABuscar = JOptionPane.showInputDialog(areaTexto, "Texto a buscar", textoABuscar);
-                String texto = areaTexto.getText();
-                Caret seleccion = areaTexto.getCaret();
-                int posicion = 0;
-                if (seleccion.getDot() != seleccion.getMark()){
-                    posicion = seleccion.getDot();
-                }
-                posicion = texto.indexOf(textoABuscar, posicion);
-                if (posicion == -1){
-                    return;
-                }
-                areaTexto.setCaretPosition(posicion);
-                areaTexto.moveCaretPosition(posicion + textoABuscar.length());
-            }
-        });
-        buscar.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, ActionEvent.CTRL_MASK)); // CTRL + F
-        buscar.setIcon(crearIcono("/res/img/buscar.png"));
-        editar.add(buscar);
         
         return editar;
     }
