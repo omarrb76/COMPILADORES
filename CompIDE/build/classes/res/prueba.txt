@@ -1,3 +1,0 @@
-Hola soy Omar, esto es una prueba para ver si funciona el lector de Java.
-Estamos probando el lector de archivos
-para poder leer archivos y posteriormente editarlos y guardarlos.
