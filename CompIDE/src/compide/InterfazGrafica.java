@@ -8,6 +8,7 @@ package compide;
 
 // IMPORTS
 import java.awt.BorderLayout;
+import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -34,6 +35,7 @@ public class InterfazGrafica extends JFrame {
     Boolean mismoArchivo; // Para guardar en el mismo archivo (Guardar) o pedir que elija un directorio
     Boolean acabadoDeCerrar; // Para que se controle un evento del texto dentro de areaTexto
     UndoManager undoManager; // Para poder rehacer o deshacer los cambios del JTextArea
+    JTextArea prueba1, prueba2;
     
     public InterfazGrafica(){
         super("CompIDE");
@@ -47,26 +49,65 @@ public class InterfazGrafica extends JFrame {
         this.setIconImage(new ImageIcon(this.getClass().getResource("/res/img/logo.png")).getImage());
         this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE); // Para que no haga nada en esto, más bien se ejecuta una función que viene más abajo
         this.setLocationRelativeTo(null);
+        this.setLayout(new GridLayout(2,1,5,5));
         this.iniciarComponentes();
     }
     
     private void iniciarComponentes() {
-        JMenuBar barraMenu = new JMenuBar();
         
-        // AÑADIMOS LA PESTAÑA DE ARCHIVO
-        barraMenu.add(this.crearMenuArchivo());
+        // PANELES (SON COMO LOS DIVS) PARA TENER UN MEJOR ORDEN DE LAS COSAS
+        JPanel panelIntermedio = new JPanel();
+        panelIntermedio.setLayout(new GridLayout(1, 2, 5, 5)); // Grid que va en medio de dos columnas (codigo y lexico)
         
-        // AÑADIMOS LA PESTAÑA DE EDITAR
-        barraMenu.add(this.crearMenuEditar());
+        // AÑADIMOS LOS PANELES AL PANEL INTERMEDIO
+        panelIntermedio.add(this.crearPanelCodigo());
+        panelIntermedio.add(this.crearPanelLexico());
         
-        // AÑADIMOS LA PESTAÑA DE FORMATO
-        barraMenu.add(this.crearMenuFormato());
+        // AÑADIMOS LOS PANELES AL FRAME
+        this.getContentPane().add(panelIntermedio);
+        this.getContentPane().add(this.crearPanelMensajes());
         
-        // AÑADIMOS LA PESTAÑA DE COMPILAR
-        barraMenu.add(this.crearMenuCompilar());
-        
-        // AÑADIMOS LA PESTAÑA DE AYUDA
-        barraMenu.add(this.crearMenuAyuda());
+        // AGREGAMOS LA BARRA DE MENU Y PONEMOS COMO VISIBLE NUESTRO FRAME
+        this.setJMenuBar(this.crearBarraMenu());
+        this.setVisible(true);
+    }
+    
+    // ESTE ES EL PANEL DEL CODIGO (DONDE EL USUARIO ESCRIBE)
+    private JPanel crearPanelCodigo(){
+        JPanel panelCodigo = new JPanel();
+        panelCodigo.setLayout(new BorderLayout());
+        // CREAMOS EL LABEL PARA INDICAR QUE AQUI VA EL CÓDIGO
+        JLabel texto = new JLabel("Código a compilar: ");
+        panelCodigo.add(texto, BorderLayout.NORTH);
+        // CREAMOS AREA DEL TEXTO
+        JScrollPane scroll = this.crearAreaTexto();
+        panelCodigo.add(scroll, BorderLayout.CENTER);
+        return panelCodigo;
+    }
+    
+    // ESTE ES EL PANEL DE LOS TOKENS Y TODAS ESAS LOQUERAS
+    private JPanel crearPanelLexico(){
+        JPanel panelLexico = new JPanel();
+        panelLexico.setLayout(new BorderLayout());
+        prueba1 = new JTextArea();
+        prueba1.setText("Se supone que aqui va el componente con pestañas de lexico");
+        prueba1.setEnabled(false);
+        panelLexico.add(prueba1, BorderLayout.CENTER);
+        return panelLexico;
+    }
+    
+    // ESTE ES EL PANEL DE LOS MENSAJES DEL COMPILADOR
+    private JPanel crearPanelMensajes(){
+        JPanel panelMensajes = new JPanel();
+        panelMensajes.setLayout(new BorderLayout());
+        prueba2 = new JTextArea();
+        prueba2.setText("Se supone que aqui va el componente con pestañas de mensajes del compilador");
+        prueba2.setEnabled(false);
+        panelMensajes.add(prueba2, BorderLayout.CENTER);
+        return panelMensajes;
+    }
+    
+    private JScrollPane crearAreaTexto(){
         
         // CREAMOS EL AREA DE TEXTO
         areaTexto = new JTextPane();
@@ -97,12 +138,30 @@ public class InterfazGrafica extends JFrame {
         
         // PARA QUE EL USUARIO TENGA UN SCROLLER PARA RECORER EL TEXTO EN CASO DE SER MUCHO
         JScrollPane scroll = new JScrollPane(areaTexto);
-        this.getContentPane().add(barraMenu, BorderLayout.NORTH);
-        this.getContentPane().add(areaTexto, BorderLayout.CENTER);
         
-        // AGREGAMOS LA BARRA DE MENU Y PONEMOS COMO VISIBLE NUESTRO FRAME
-        this.setJMenuBar(barraMenu);
-        this.setVisible(true);
+        return scroll;
+    }
+    
+    private JMenuBar crearBarraMenu(){
+        
+        JMenuBar barraMenu = new JMenuBar();
+        
+        // AÑADIMOS LA PESTAÑA DE ARCHIVO
+        barraMenu.add(this.crearMenuArchivo());
+        
+        // AÑADIMOS LA PESTAÑA DE EDITAR
+        barraMenu.add(this.crearMenuEditar());
+        
+        // AÑADIMOS LA PESTAÑA DE FORMATO
+        barraMenu.add(this.crearMenuFormato());
+        
+        // AÑADIMOS LA PESTAÑA DE COMPILAR
+        barraMenu.add(this.crearMenuCompilar());
+        
+        // AÑADIMOS LA PESTAÑA DE AYUDA
+        barraMenu.add(this.crearMenuAyuda());
+        
+        return barraMenu;
     }
     
     // LOS DIFERENTES COMPONENTES DE LOS MENUS
