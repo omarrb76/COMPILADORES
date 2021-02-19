@@ -29,14 +29,13 @@ import javax.swing.undo.UndoManager;
 public class InterfazGrafica extends JFrame {
     
     // ATRIBUTOS
-    JTextPane areaTexto; // El area donde el usuario escribirá
+    JTextPane areaTexto, lexico, sintatico, semantico, codIn, errores, resultados; // El area donde el usuario escribirá
     ManipuladorArchivos manipuladorArchivos; // Para leer y guardar el archivo
     Boolean editado; // Para saber si esta siendo editado
     String titulo; // Para poner de titulo
     Boolean mismoArchivo; // Para guardar en el mismo archivo (Guardar) o pedir que elija un directorio
     Boolean acabadoDeCerrar; // Para que se controle un evento del texto dentro de areaTexto
     UndoManager undoManager; // Para poder rehacer o deshacer los cambios del JTextArea
-    JTextArea prueba1, prueba2;
     
     public InterfazGrafica(){
         super("CompIDE");
@@ -88,41 +87,33 @@ public class InterfazGrafica extends JFrame {
     
     // ESTE ES EL PANEL DE LOS TOKENS Y TODAS ESAS LOQUERAS
     private JTabbedPane crearPanelLexico(){
-       /* JPanel panelLexico = new JPanel();
-        panelLexico.setLayout(new BorderLayout());
-      
-        prueba1.setText("Se supone que aqui va el componente con pestañas de lexico");
-        prueba1.setEnabled(false);
-        panelLexico.add(prueba1, BorderLayout.CENTER);*/
+        
        JTabbedPane tabbed = new JTabbedPane();
-       prueba1 = new JTextArea();
-       prueba2 = new JTextArea();
-       JTextArea prueba3 = new JTextArea();
-       JTextArea prueba4 = new JTextArea();
-       tabbed.add("Léxico",prueba1);
-       tabbed.add("Sintáctico",prueba2);
-       tabbed.add("Semántico",prueba3);
-       tabbed.add("Código Intermedio",prueba4);
        
+       lexico = new JTextPane();
+       sintatico = new JTextPane();
+       semantico = new JTextPane();
+       codIn = new JTextPane();
+       tabbed.add("Léxico", new JScrollPane(lexico));
+       tabbed.add("Sintáctico", new JScrollPane(sintatico));
+       tabbed.add("Semántico", new JScrollPane(semantico));
+       tabbed.add("Código Intermedio", new JScrollPane(codIn));
        
-        return tabbed;
+       return tabbed;
+       
     }
     
     // ESTE ES EL PANEL DE LOS MENSAJES DEL COMPILADOR
     private JTabbedPane crearPanelMensajes(){
-        /*JPanel panelMensajes = new JPanel();
-        panelMensajes.setLayout(new BorderLayout());
-        prueba2 = new JTextArea();
-        prueba2.setText("Se supone que aqui va el componente con pestañas de mensajes del compilador");
-        prueba2.setEnabled(false);
-        panelMensajes.add(prueba2, BorderLayout.CENTER);
-        return panelMensajes;*/
-       JTabbedPane tabbed = new JTabbedPane();
-       JTextArea prueba5 = new JTextArea();
-       JTextArea prueba6 = new JTextArea();
-         tabbed.add("Errores",prueba5);
-       tabbed.add("Resultados",prueba6);
-       return tabbed;
+        
+        JTabbedPane tabbed = new JTabbedPane();
+        
+        errores = new JTextPane();
+        resultados = new JTextPane();
+        tabbed.add("Errores", new JScrollPane(errores));
+        tabbed.add("Resultados", new JScrollPane(resultados));
+        
+        return tabbed;
     }
     
     private JScrollPane crearAreaTexto(){
