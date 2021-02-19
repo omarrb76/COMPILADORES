@@ -18,6 +18,7 @@ import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
+import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.UndoableEditEvent;
@@ -86,25 +87,42 @@ public class InterfazGrafica extends JFrame {
     }
     
     // ESTE ES EL PANEL DE LOS TOKENS Y TODAS ESAS LOQUERAS
-    private JPanel crearPanelLexico(){
-        JPanel panelLexico = new JPanel();
+    private JTabbedPane crearPanelLexico(){
+       /* JPanel panelLexico = new JPanel();
         panelLexico.setLayout(new BorderLayout());
-        prueba1 = new JTextArea();
+      
         prueba1.setText("Se supone que aqui va el componente con pestañas de lexico");
         prueba1.setEnabled(false);
-        panelLexico.add(prueba1, BorderLayout.CENTER);
-        return panelLexico;
+        panelLexico.add(prueba1, BorderLayout.CENTER);*/
+       JTabbedPane tabbed = new JTabbedPane();
+       prueba1 = new JTextArea();
+       prueba2 = new JTextArea();
+       JTextArea prueba3 = new JTextArea();
+       JTextArea prueba4 = new JTextArea();
+       tabbed.add("Léxico",prueba1);
+       tabbed.add("Sintáctico",prueba2);
+       tabbed.add("Semántico",prueba3);
+       tabbed.add("Código Intermedio",prueba4);
+       
+       
+        return tabbed;
     }
     
     // ESTE ES EL PANEL DE LOS MENSAJES DEL COMPILADOR
-    private JPanel crearPanelMensajes(){
-        JPanel panelMensajes = new JPanel();
+    private JTabbedPane crearPanelMensajes(){
+        /*JPanel panelMensajes = new JPanel();
         panelMensajes.setLayout(new BorderLayout());
         prueba2 = new JTextArea();
         prueba2.setText("Se supone que aqui va el componente con pestañas de mensajes del compilador");
         prueba2.setEnabled(false);
         panelMensajes.add(prueba2, BorderLayout.CENTER);
-        return panelMensajes;
+        return panelMensajes;*/
+       JTabbedPane tabbed = new JTabbedPane();
+       JTextArea prueba5 = new JTextArea();
+       JTextArea prueba6 = new JTextArea();
+         tabbed.add("Errores",prueba5);
+       tabbed.add("Resultados",prueba6);
+       return tabbed;
     }
     
     private JScrollPane crearAreaTexto(){
