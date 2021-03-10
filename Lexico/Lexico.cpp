@@ -58,7 +58,7 @@ enum TokenType {
 
 enum StateType {
     START,      // 0
-    INSASSIGN,  // 1
+    INASSIGN,   // 1
     INCOMMENT,  // 2
     INNUM,      // 3
     INID,       // 4
@@ -80,6 +80,8 @@ int main(int argc, char * argv[]) {
     int lineano = 1;            // Linea actual
     char c;                     // Para recorrer la linea
     string palabra = "";        // Palabra que separamos en la linea
+    bool comLinea = false;      // Para saber si estamos tomando en cuenta los lexemas o no
+    bool comBloque = false;
 
     // Leemos el archivo
     while (getline(archivo, linea)) {
@@ -88,64 +90,92 @@ int main(int argc, char * argv[]) {
 
             c = linea[i];
 
-            if (c != ' ') { // Sigue siendo la misma palabra o algun símbolo especial
+            if (comLinea || comBloque) { // Si esta comentado, no tiene sentido estar haciendo los tokens
 
-                if (c == '+' || c == '-' || c == '*' || c == '/' || c == '^' || c == ';' 
-                             || c == ',' || c == '(' || c == ')' || c == '{' || c == '}') {
-                    if (palabra != "") getToken(palabra, lineano);
-                    getToken(string(1, c), lineano);
-                    palabra = "";
-                } else if (c == '<') {
-                    if (linea[i + 1] == '=') {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken("<=", lineano);
-                        palabra = "";
-                        i++;
-                    } else {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken("<", lineano);
-                        palabra = "";
-                    }
-                } else if (c == '>') {
-                    if (linea[i + 1] == '=') {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken(">=", lineano);
-                        palabra = "";
-                        i++;
-                    } else {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken(">", lineano);
-                        palabra = "";
-                    }
-                } else if (c == '=') {
-                    if (linea[i + 1] == '=') {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken("==", lineano);
-                        palabra = "";
-                        i++;
-                    } else {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken("=", lineano);
-                        palabra = "";
-                    }
-                } else if (c == '!') {
-                    if (linea[i + 1] == '=') {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken("!=", lineano);
-                        palabra = "";
-                        i++;
-                    } else {
-                        if (palabra != "") getToken(palabra, lineano);
-                        getToken("!", lineano);
-                        palabra = "";
-                    }
-                } else {
-                    palabra += c;
+                if (c == '*' && linea[i + 1] == '/') {
+                    comBloque = false;
+                    i++;
                 }
-                
-            } else { // Word boundary
-                if (palabra != "") getToken(palabra, lineano);
-                palabra = "";
+
+            } else { // Solo checaremos arriba si existe una forma de quitar el comBloque
+
+                if (c != ' ') { // Sigue siendo la misma palabra o algun símbolo especial
+
+                    if (c == '+' || c == '-' || c == '*' || c == '^' || c == ';' ||
+                        c == ',' || c == '(' || c == ')' || c == '{' || c == '}') {
+                        if (palabra != "") getToken(palabra, lineano);
+                        getToken(string(1, c), lineano);
+                        palabra = "";
+                    } else if (c == '/') {
+                        if (linea[i + 1] == '/') {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("//", lineano);
+                            comLinea = true;
+                            palabra = "";
+                            i++;
+                        } else if (linea[i + 1] == '*') {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("/*", lineano);
+                            comBloque = true;
+                            palabra = "";
+                            i++;
+                        } else {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("/", lineano);
+                            palabra = "";
+                        }
+                    } else if (c == '<') {
+                        if (linea[i + 1] == '=') {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("<=", lineano);
+                            palabra = "";
+                            i++;
+                        } else {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("<", lineano);
+                            palabra = "";
+                        }
+                    } else if (c == '>') {
+                        if (linea[i + 1] == '=') {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken(">=", lineano);
+                            palabra = "";
+                            i++;
+                        } else {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken(">", lineano);
+                            palabra = "";
+                        }
+                    } else if (c == '=') {
+                        if (linea[i + 1] == '=') {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("==", lineano);
+                            palabra = "";
+                            i++;
+                        } else {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("=", lineano);
+                            palabra = "";
+                        }
+                    } else if (c == '!') {
+                        if (linea[i + 1] == '=') {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("!=", lineano);
+                            palabra = "";
+                            i++;
+                        } else {
+                            if (palabra != "") getToken(palabra, lineano);
+                            getToken("!", lineano);
+                            palabra = "";
+                        }
+                    } else {
+                        palabra += c;
+                    }
+                    
+                } else { // Word boundary
+                    if (palabra != "") getToken(palabra, lineano);
+                    palabra = "";
+                }
             }
 
         }
@@ -153,6 +183,7 @@ int main(int argc, char * argv[]) {
         if (palabra != "") getToken(palabra, lineano);
         palabra = "";
 
+        comLinea = false; // Debido al salto de linea, el comentario de linea se acaba
         lineano++; // Sumamos en uno el numero de línea
     }
 
@@ -197,13 +228,13 @@ TokenType getToken(string lexeme, int lineano) {
                     else if (c == '=')   state = INEQ;
                     else if (c == '>')   state = INGTE;
                     else if (c == '!')   state = INDIFF;
+                    else if (c == '/')   state = INCOMMENT;
                     else {
                         state = DONE;
                         switch (c) {
                             case '+': token = PLUS;     break;
                             case '-': token = MINUS;    break;
                             case '*': token = TIMES;    break;
-                            case '/': token = DIVISION; break;
                             case '^': token = POW;      break;
                             case '(': token = LPAREN;   break;
                             case ')': token = RPAREN;   break;
@@ -228,26 +259,33 @@ TokenType getToken(string lexeme, int lineano) {
                     break;
                 case INLTE:
                     state = DONE;
-                    if (c == '=') token = LTE;
+                    if (c == '=')       token = LTE;
                     else if (c == '\0') token = LT;
-                    else token = ERROR;
+                    else                token = ERROR;
                     break;
                 case INEQ:
                     state = DONE;
-                    if (c == '=') token = EQ;
+                    if (c == '=')       token = EQ;
                     else if (c == '\0') token = ASSIGN;
-                    else token = ERROR;
+                    else                token = ERROR;
                     break;
                 case INGTE:
                     state = DONE;
-                    if (c == '=') token = GTE;
+                    if (c == '=')       token = GTE;
                     else if (c == '\0') token = GT;
-                    else token = ERROR;
+                    else                token = ERROR;
                     break;
                 case INDIFF:
                     state = DONE;
-                    if (c == '=') token = DIFF;
-                    else token = ERROR;
+                    if (c == '=')       token = DIFF;
+                    else                token = ERROR;
+                    break;
+                case INCOMMENT:
+                    state = DONE;
+                    if (c == '/')       token = LINECOMM;
+                    else if (c == '*')  token = BLOCKCOMM;
+                    else if (c == '\0') token = DIVISION;   
+                    else                token = ERROR;
                     break;
                 default: // Nunca debería de pasar
                     cout << "Scanner bug, estado: " << state << endl;

@@ -4,4 +4,9 @@ el scanner y despues pasarlo al lenguaje rust
 1234566 < 5555;
 
 int variable1,x,y,z;
-if (x==1) x=1;else x=0;fi
+if (x==1) x=1;else x=0;fi // Comentario de linea
+x = 5;
+/* Este 
+es un comentario de bloque
+jaja */
+float pollo = 34;
