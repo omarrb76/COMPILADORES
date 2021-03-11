@@ -5,7 +5,7 @@ el scanner y despues pasarlo al lenguaje rust
 
 int variable1,x,y,z;
 if (x==1) x=1;else x=0;fi // Comentario de linea
-x = 5;
+x = 5 + 6;
 /* Este 
 es un comentario de bloque
 jaja */
