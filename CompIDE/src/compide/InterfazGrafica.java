@@ -14,7 +14,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
@@ -94,6 +97,12 @@ public class InterfazGrafica extends JFrame {
        sintatico = new JTextPane();
        semantico = new JTextPane();
        codIn = new JTextPane();
+       
+       lexico.setEditable(false);
+       sintatico.setEditable(false);
+       semantico.setEditable(false);
+       codIn.setEditable(false);
+       
        tabbed.add("Léxico", new JScrollPane(lexico));
        tabbed.add("Sintáctico", new JScrollPane(sintatico));
        tabbed.add("Semántico", new JScrollPane(semantico));
@@ -110,6 +119,10 @@ public class InterfazGrafica extends JFrame {
         
         errores = new JTextPane();
         resultados = new JTextPane();
+        
+        errores.setEditable(false);
+        resultados.setEditable(false);
+        
         tabbed.add("Errores", new JScrollPane(errores));
         tabbed.add("Resultados", new JScrollPane(resultados));
         
@@ -377,7 +390,10 @@ public class InterfazGrafica extends JFrame {
         
         JMenuItem compile = new JMenuItem("Compila");
         compile.addActionListener((ActionEvent e) -> {
-            System.out.println("Elegiste la opcion compila");
+            editado = true; // Luego tenemos problemillas, es para que pase unas banderas en el método que sigue
+            if (guardarArchivo(mismoArchivo) == JFileChooser.APPROVE_OPTION) { // EL usuario no le dio a cancelar
+                compilarLexico();
+            }
         });
         compile.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK | ActionEvent.SHIFT_MASK)); // CTRL + SHIFT + C
         compile.setIcon(crearIcono("/res/img/compilar.png"));
@@ -509,6 +525,35 @@ public class InterfazGrafica extends JFrame {
            areaTexto.setEnabled(true);
            editado = false; // Lo acabamos de recien abrir, no puede estar editado
            mismoArchivo = true;
+        }
+    }
+    
+    // Esta función manda a llamar al archivo que compila el Léxico
+    private void compilarLexico () {
+        try {
+            
+            String[] commands = {"Lexico.exe", manipuladorArchivos.getArchivo().getAbsolutePath()};
+            Process proc = Runtime.getRuntime().exec(commands);
+
+            BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+
+            String s, res = "";
+            Boolean primeraLinea = true;
+            while ((s = stdInput.readLine()) != null) {
+                if (primeraLinea) {
+                    res = s;
+                    primeraLinea = false;
+                } else {
+                    res += "\n" + s;
+                }
+            }
+
+            System.out.println(res);
+            stdInput.close();
+            proc.destroy();
+
+        } catch (IOException ex) {
+            Logger.getLogger(InterfazGrafica.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
