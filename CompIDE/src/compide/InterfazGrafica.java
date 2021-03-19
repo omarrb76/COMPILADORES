@@ -547,6 +547,8 @@ public class InterfazGrafica extends JFrame {
                     res += "\n" + s;
                 }
             }
+            
+            lexico.setText(res);
 
             System.out.println(res);
             stdInput.close();
