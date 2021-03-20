@@ -25,6 +25,7 @@ import static javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.UndoableEditEvent;
+import javax.swing.text.AbstractDocument;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 
@@ -157,6 +158,9 @@ public class InterfazGrafica extends JFrame {
         areaTexto.getDocument().addUndoableEditListener((UndoableEditEvent evt) -> {
             undoManager.addEdit(evt.getEdit());
         });
+        
+        // AGREGAMOS EL FILTRADOR DE TEXTO (COLORES)
+        ((AbstractDocument) areaTexto.getDocument()).setDocumentFilter(new CustomDocumentFilter(areaTexto));
         
         // PARA QUE EL USUARIO TENGA UN SCROLLER PARA RECORER EL TEXTO EN CASO DE SER MUCHO
         JScrollPane scroll = new JScrollPane(areaTexto);
@@ -550,7 +554,6 @@ public class InterfazGrafica extends JFrame {
             
             lexico.setText(res);
 
-            System.out.println(res);
             stdInput.close();
             proc.destroy();
 
