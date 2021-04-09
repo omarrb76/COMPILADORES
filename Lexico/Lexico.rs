@@ -157,6 +157,7 @@ fn getToken(lexeme: &String, lineano: i32) -> TokenType {
             match state {
                 StateType::START => {
                     if      c.is_digit(10)      { state = StateType::INNUM;     token = TokenType::NUM;         }
+                    else if c == '_'            { state = StateType::INID;      token = TokenType::ID;          }
                     else if c.is_alphabetic()   { state = StateType::INID;      token = TokenType::ID;          }
                     else if c == '<'            { state = StateType::INLTE;     token = TokenType::LT;          }
                     else if c == '='            { state = StateType::INEQ;      token = TokenType::ASSIGN;      }
@@ -173,7 +174,10 @@ fn getToken(lexeme: &String, lineano: i32) -> TokenType {
                             ')' => token = TokenType::RPAREN,
                             ';' => token = TokenType::SEMI,
                             ',' => token = TokenType::COMA,
-                            _   => token = TokenType::ERROR
+                            _   => {
+                                token = TokenType::ERROR;
+                                state = StateType::DONE;
+                            }
                         }
                     }
                 },
@@ -182,7 +186,8 @@ fn getToken(lexeme: &String, lineano: i32) -> TokenType {
                     else                    { token = TokenType::NUM;                               }
                 },
                 StateType::INID => {
-                    if !c.is_alphanumeric() { state = StateType::DONE; token = TokenType::ERROR;    }
+                    if !c.is_alphanumeric() 
+                    && !(c == '_')          { state = StateType::DONE; token = TokenType::ERROR;    }
                     else                    { token = TokenType::ID;                                }
                 },
                 StateType::INLTE => {
