@@ -3,7 +3,7 @@ use std::process;                               // Para el mensaje de error
 use std::fs::File;                              // Para leer el archivo
 use std::io::{self, prelude::*, BufReader};     // Para leer el archivo
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum TokenType {
     /* PALBRAS RESERVADAS */
     PROGRAM, IF, ELSE, FI, DO, UNTIL, WHILE, READ, WRITE, FLOAT, INT, BOOL, NOT, AND, OR,         
@@ -27,7 +27,7 @@ enum StateType {
 struct Token {
     lexema: String,
     token: TokenType,
-    linea: u64
+    linea: i32
 }
 
 // Variables globales
@@ -43,14 +43,6 @@ static mut token_actual: Token = Token {
 static mut token_array: Vec<Token> = Vec::new();
 
 fn main () -> io::Result<()> {
-
-    unsafe { println!("Lexema: {} | Linea: {} | Token: {:?}", token_actual.lexema, token_actual.linea, token_actual.token); }
-    unsafe { 
-        token_array.push(token_actual.clone());
-        for token in token_array.iter() {
-            println!("Lexema: {} | Linea: {} | Token: {:?}", token.lexema, token.linea, token.token);
-        }
-    }
 
     // Obtenemos los parámetros del main
     let args: Vec<String> = env::args().collect();
@@ -154,11 +146,26 @@ fn main () -> io::Result<()> {
 
     }
 
+    unsafe {
+
+        // Agregamos el último token de fin de línea
+        token_array.push(Token {
+            lexema: String::new(),
+            token: TokenType::ENDFILE,
+            linea: lineano
+        });
+
+        // Imprimimos toda la información
+        for token in token_array.iter() {
+            println!("Lexema: {} | Linea: {} | Token: {:?}", token.lexema, token.linea, token.token);
+        }
+    }
+
     Ok(())
 
 }
 
-fn get_token(lexeme: &String, lineano: i32) -> TokenType {
+fn get_token(lexeme: &String, lineano: i32) -> () {
 
     let mut token : TokenType = TokenType::ERROR;
     let mut state : StateType = StateType::START;
@@ -249,7 +256,13 @@ fn get_token(lexeme: &String, lineano: i32) -> TokenType {
         }
     }
 
-    println!("Lexema: {} | Linea: {} | Token: {:?}", lexeme, lineano, token);
-
-    return token;
+    // Metemos el Token en el arreglo de Tokens (este se usará después a la hora del análisis sintáctico)
+    unsafe {
+        token_array.push(Token {
+            lexema: lexeme.to_string(),
+            token: token,
+            linea: lineano
+        });
+    }
+    
 }
