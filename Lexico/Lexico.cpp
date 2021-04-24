@@ -304,3 +304,5 @@ TokenType getToken(string lexeme, int lineano) {
 
     return token;
 }
+
+/* Ahora que tenemos todos los tokens leídos, solo queda hacer el árbol sintáctico (por ahora) */

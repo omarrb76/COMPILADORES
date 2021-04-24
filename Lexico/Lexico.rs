@@ -3,7 +3,7 @@ use std::process;                               // Para el mensaje de error
 use std::fs::File;                              // Para leer el archivo
 use std::io::{self, prelude::*, BufReader};     // Para leer el archivo
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum TokenType {
     /* PALBRAS RESERVADAS */
     PROGRAM, IF, ELSE, FI, DO, UNTIL, WHILE, READ, WRITE, FLOAT, INT, BOOL, NOT, AND, OR,         
@@ -22,7 +22,35 @@ enum StateType {
     START, INASSIGN, INCOMMENT, INNUM, INID, INLTE, INEQ, INGTE, INDIFF, DONE
 }
 
+// Estructura que contiene la información de cada Token
+#[derive(Clone)]
+struct Token {
+    lexema: String,
+    token: TokenType,
+    linea: u64
+}
+
+// Variables globales
+// Token actual, lo lleno con lo primero que se me ocurrio
+// Al final cambiara su valor
+static mut token_actual: Token = Token {
+    lexema: String::new(),
+    token: TokenType::PROGRAM,
+    linea: 0
+};
+
+// Arreglo que contendra todos los tokens que vayamos recuperando
+static mut token_array: Vec<Token> = Vec::new();
+
 fn main () -> io::Result<()> {
+
+    unsafe { println!("Lexema: {} | Linea: {} | Token: {:?}", token_actual.lexema, token_actual.linea, token_actual.token); }
+    unsafe { 
+        token_array.push(token_actual.clone());
+        for token in token_array.iter() {
+            println!("Lexema: {} | Linea: {} | Token: {:?}", token.lexema, token.linea, token.token);
+        }
+    }
 
     // Obtenemos los parámetros del main
     let args: Vec<String> = env::args().collect();
@@ -40,45 +68,45 @@ fn main () -> io::Result<()> {
     // Variables de control
     let mut lineano = 1;                    // Para contar las líneas
     let mut palabra = String::from("");     // Palabra que separamos en la línea
-    let mut comLinea : bool = false;        // Para saber si tomamos en cuenta los lexemas o no
-    let mut comBloque : bool = false;       // Son banderas para saber cuando inicia y acaba un comentario
-    let mut comFlagClose : bool = false;
-    let mut comFlagOpen : bool = false;
-    let mut specialSimbol : bool = false;   // Porque RUST no tiene muchas cosas utiles, necesitamos varias banderas
-    let mut specialSimbolChar : char = 'a';
+    let mut com_linea : bool = false;        // Para saber si tomamos en cuenta los lexemas o no
+    let mut com_bloque : bool = false;       // Son banderas para saber cuando inicia y acaba un comentario
+    let mut com_flag_close : bool = false;
+    let mut com_flag_open : bool = false;
+    let mut special_simbol : bool = false;   // Porque RUST no tiene muchas cosas utiles, necesitamos varias banderas
+    let mut special_simbol_char : char = 'a';
 
     for linea in reader.lines() {           // Leemos linea por linea
 
         for c in linea?.chars() {           // Caracter por caracter de cada linea
             
             // Si esta comentado, no tiene sentido estar haciendo los tokens
-            if comLinea || comBloque {
+            if com_linea || com_bloque {
 
-                if c == '*' { comFlagClose = true; }// Si el siguiente caracter es '/' se quita el flag
-                else if c == '/' && comFlagClose { comBloque = false; comFlagClose = false; }
+                if c == '*' { com_flag_close = true; }// Si el siguiente caracter es '/' se quita el flag
+                else if c == '/' && com_flag_close { com_bloque = false; com_flag_close = false; }
                 continue;
 
             }
 
-            if comFlagOpen { // Teóricamente el caracter anterior fue un '/' y se vació la palabra
+            if com_flag_open { // Teóricamente el caracter anterior fue un '/' y se vació la palabra
 
                 if c == '/' {
-                    getToken(&String::from("//"), lineano);
-                    comLinea = true;
+                    get_token(&String::from("//"), lineano);
+                    com_linea = true;
                 } else if c == '*' {
-                    getToken(&String::from("/*"), lineano);
-                    comBloque = true;
-                } else { getToken(&String::from("/"), lineano); }
-                comFlagOpen = false;
+                    get_token(&String::from("/*"), lineano);
+                    com_bloque = true;
+                } else { get_token(&String::from("/"), lineano); }
+                com_flag_open = false;
                 continue;
 
             }
 
-            if specialSimbol { // Teóricamente aqui tendrá uno de estos símbolos: < > ! = y se vació la palabra
+            if special_simbol { // Teóricamente aqui tendrá uno de estos símbolos: < > ! = y se vació la palabra
 
-                if c == '=' { getToken(&String::from(specialSimbolChar.to_string() + "="), lineano); }
-                else { getToken(&specialSimbolChar.to_string(), lineano); }
-                specialSimbol = false;
+                if c == '=' { get_token(&String::from(special_simbol_char.to_string() + "="), lineano); }
+                else { get_token(&special_simbol_char.to_string(), lineano); }
+                special_simbol = false;
                 continue;
 
             }
@@ -87,21 +115,21 @@ fn main () -> io::Result<()> {
                 if  c == '+' || c == '-' || c == '*' || c == '^' || c == ';' ||
                     c == ',' || c == '(' || c == ')' || c == '{' || c == '}' {
 
-                    if palabra != "" { getToken(&palabra, lineano); }
-                    getToken(&c.to_string(), lineano);
+                    if palabra != "" { get_token(&palabra, lineano); }
+                    get_token(&c.to_string(), lineano);
                     palabra = String::from("");
 
                 } else if c == '/' {
 
-                    comFlagOpen = true;
-                    if palabra != "" { getToken(&palabra, lineano); }
+                    com_flag_open = true;
+                    if palabra != "" { get_token(&palabra, lineano); }
                     palabra = String::from("");
 
                 } else if c == '<' || c == '>' || c == '=' || c == '!' {
 
-                    specialSimbol = true;
-                    specialSimbolChar = c;
-                    if palabra != "" { getToken(&palabra, lineano); }
+                    special_simbol = true;
+                    special_simbol_char = c;
+                    if palabra != "" { get_token(&palabra, lineano); }
                     palabra = String::from("");
 
                 } else {
@@ -112,16 +140,16 @@ fn main () -> io::Result<()> {
                 
             } else { // Word boundary
 
-                if palabra != "" { getToken(&palabra, lineano); }
+                if palabra != "" { get_token(&palabra, lineano); }
                 palabra = String::from("");
 
             }
         }
 
-        if palabra != "" { getToken(&palabra, lineano); }
+        if palabra != "" { get_token(&palabra, lineano); }
         palabra = String::from("");
 
-        comLinea = false;   // Debido al salto de linea, el comentario de linea se acaba
+        com_linea = false;   // Debido al salto de linea, el comentario de linea se acaba
         lineano += 1;       // Sumamos en uno el numero de línea
 
     }
@@ -130,7 +158,7 @@ fn main () -> io::Result<()> {
 
 }
 
-fn getToken(lexeme: &String, lineano: i32) -> TokenType {
+fn get_token(lexeme: &String, lineano: i32) -> TokenType {
 
     let mut token : TokenType = TokenType::ERROR;
     let mut state : StateType = StateType::START;
