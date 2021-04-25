@@ -15,7 +15,9 @@ enum TokenType {
     /* COMENTARIOS */
     BLOCKCOMM, LINECOMM,   
     /* BOOK KEEPING TOKENS */
-    ENDFILE, ERROR       
+    ENDFILE, ERROR,
+    /* ERRORES */
+    INT_FLOAT_BOOL_LPAREN, STATEMENT_INITIALIZER, CONST_ID_LPAREN
 }
 
 #[derive(Debug)]
@@ -33,16 +35,16 @@ struct Token {
 
 /************ PERTENECIENTE AL ANÁLISIS SINTÁCTICO ***************/
 #[derive(Copy, Clone)]
-enum NodeKind { STMT, EXP }
+enum NodeKind { STMT, EXP, EMPTY }
 
 #[derive(Copy, Clone)]
-enum StmtKind { IF, REPEAT,  ASSIGN, READ, WRITE }
+enum StmtKind { PROGRAM, IF, WHILE, DO, READ, WRITE, ASSIGN, DECLARE }
 
 #[derive(Copy, Clone)]
 enum ExpKind  { OP, CONST, ID }
 
 #[derive(Copy, Clone)]
-enum ExpType  { VOID, INT, BOOL }
+enum ExpType  { VOID, INT, BOOL, FLOAT }
 
 #[derive(Clone)]
 struct TreeNode {
@@ -186,7 +188,9 @@ fn main() -> io::Result<()> {
     }
 
     //b_expresion();
-    asignacion();
+    //asignacion();
+    //lista_sentencia();
+    programa();
 
     Ok(())
 
@@ -301,6 +305,86 @@ fn get_token(lexeme: &String, lineano: i32) -> () {
 
 // Funciones del análisis sintáctico
 
+// programa ::= program ”{” lista-declaración lista-sentencias ”}”
+fn programa() -> TreeNode {
+    unsafe { println!("ENTRE PROGRAMA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newStmtNode(StmtKind::PROGRAM);
+    coincide(TokenType::PROGRAM);
+    coincide(TokenType::LBRACKET);
+    unsafe {
+        if token_array[token_actual].token != TokenType::RBRACKET {
+            t.hijo1 = Some(Box::new(lista_declaracion()));
+            t.hijo2 = Some(Box::new(lista_sentencia()));
+        }
+    }
+    coincide(TokenType::RBRACKET);
+    return t;
+}
+
+// lista-declaración ::= { declaración }
+fn lista_declaracion() -> TreeNode {
+    unsafe { println!("ENTRE LISTA_DECLARACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = declaracion();
+    unsafe {
+        if 
+        token_array[token_actual].token == TokenType::INT || token_array[token_actual].token == TokenType::FLOAT ||
+        token_array[token_actual].token == TokenType::BOOL {
+
+            t.hermano = Some(Box::new(lista_declaracion()));
+
+        }
+    }
+    return t;
+}
+
+// declaración ::= tipo lista-id ”;”
+// tipo ::= int | float | bool
+fn declaracion() -> TreeNode {
+    unsafe { println!("ENTRE DECLARACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newStmtNode(StmtKind::DECLARE);
+    unsafe { t.attr_name = Some(token_array[token_actual].lexema.clone()); }
+    unsafe {
+        match token_array[token_actual].token {
+            TokenType::INT => {
+                t.exp_type = ExpType::INT;
+                coincide(TokenType::INT);
+                t.hijo1 = Some(Box::new(lista_id()));
+            },
+            TokenType::FLOAT => {
+                t.exp_type = ExpType::FLOAT;
+                coincide(TokenType::FLOAT);
+                t.hijo1 = Some(Box::new(lista_id()));
+            },
+            TokenType::BOOL => {
+                t.exp_type = ExpType::BOOL;
+                coincide(TokenType::BOOL);
+                t.hijo1 = Some(Box::new(lista_id()));
+            },
+            _ => {
+                t = newErrorNode(ExpKind::OP);
+                error(TokenType::INT_FLOAT_BOOL_LPAREN);
+            }
+        }
+    }
+    coincide(TokenType::SEMI);
+    return t;
+}
+
+// lista-id ::= identificador { ”,” identificador }
+fn lista_id() -> TreeNode {
+    unsafe { println!("ENTRE LISTA_ID --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newExpNode(ExpKind::ID);
+    unsafe { t.attr_name = Some(token_array[token_actual].lexema.clone()); }
+    coincide(TokenType::ID);
+    unsafe {
+        if token_array[token_actual].token == TokenType::COMA {
+            coincide(TokenType::COMA);
+            t.hermano = Some(Box::new(lista_id()));
+        }
+    }
+    return t;
+}
+
 // lista-sentencias ::= { sentencias }
 fn lista_sentencia() -> TreeNode {
     unsafe { println!("ENTRE LISTA_SENTENCIA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
@@ -334,22 +418,80 @@ fn sentencia() -> TreeNode {
             TokenType::ID =>        { t = asignacion(); },
             _ => {
                 t = newErrorNode(ExpKind::OP);
-                error(TokenType::ENDFILE);
-                token_actual += 1;
+                error(TokenType::STATEMENT_INITIALIZER);
             }
         }
     }
     return t;
 }
 
+// selección ::= if ”(” b-expresión ”)” then bloque [ else bloque ] fi
 fn seleccion() -> TreeNode {
-    unsafe { println!("ENTRE SENTENCIA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
-    let mut t: TreeNode;
+    unsafe { println!("ENTRE SELECCION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newStmtNode(StmtKind::IF);
     coincide(TokenType::IF);
     coincide(TokenType::LPAREN);
-    t = b_expresion();
+    t.hijo1 = Some(Box::new(b_expresion()));
     coincide(TokenType::RPAREN);
-    coincide(TokenType::TH)
+    coincide(TokenType::THEN);
+    t.hijo2 = Some(Box::new(bloque()));
+    unsafe {
+        if token_array[token_actual].token == TokenType::ELSE {
+            coincide(TokenType::ELSE);
+            t.hijo3 = Some(Box::new(bloque()));
+        }
+    }
+    coincide(TokenType::FI);
+    return t;
+}
+
+// iteración ::= while ”(” b-expresión ”)” bloque
+fn iteracion() -> TreeNode {
+    unsafe { println!("ENTRE ITERACION (WHILE) --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newStmtNode(StmtKind::WHILE);
+    coincide(TokenType::WHILE);
+    coincide(TokenType::LPAREN);
+    t.hijo1 = Some(Box::new(b_expresion()));
+    coincide(TokenType::RPAREN);
+    t.hijo2 = Some(Box::new(bloque()));
+    return t;
+}
+
+// repetición ::= do bloque until "(" b-expresión ")" ";"
+fn repeticion() -> TreeNode {
+    unsafe { println!("ENTRE REPETICION (DO) --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newStmtNode(StmtKind::DO);
+    coincide(TokenType::DO);
+    t.hijo1 = Some(Box::new(bloque()));
+    coincide(TokenType::UNTIL);
+    coincide(TokenType::LPAREN);
+    t.hijo2 = Some(Box::new(b_expresion()));
+    coincide(TokenType::RPAREN);
+    coincide(TokenType::SEMI);
+    return t;
+}
+
+// sent-read ::= read identificador ";"
+fn sent_read() -> TreeNode {
+    unsafe { println!("ENTRE SENT_READ --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newStmtNode(StmtKind::READ);
+    coincide(TokenType::READ);
+    let mut p: TreeNode = newExpNode(ExpKind::ID);
+    unsafe { p.attr_name = Some(token_array[token_actual].lexema.clone()); }
+    coincide(TokenType::ID);
+    t.hijo1 = Some(Box::new(p.clone()));
+    coincide(TokenType::SEMI);
+    return t;
+}
+
+// sent-write ::= write b-expresión ";"
+fn sent_write() -> TreeNode {
+    unsafe { println!("ENTRE SENT_WRITE --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    let mut t: TreeNode = newStmtNode(StmtKind::WRITE);
+    coincide(TokenType::WRITE);
+    t.hijo1 = Some(Box::new(b_expresion()));
+    coincide(TokenType::SEMI);
+    return t;
 }
 
 // bloque ::= ”{” lista-sentencia ”}”
@@ -357,7 +499,13 @@ fn bloque() -> TreeNode {
     unsafe { println!("ENTRE BLOQUE --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode;
     coincide(TokenType::LBRACKET);
-    t = lista_sentencia();
+    unsafe {
+        if token_array[token_actual].token != TokenType::RBRACKET {
+            t = lista_sentencia();
+        } else {
+            t = newEmptyNode();
+        }
+    }
     coincide(TokenType::RBRACKET);
     return t;
 }
@@ -543,8 +691,7 @@ fn factor() -> TreeNode {
             },
             _ => {
                 t = newErrorNode(ExpKind::OP);
-                error(TokenType::ENDFILE);
-                token_actual += 1;
+                error(TokenType::CONST_ID_LPAREN);
             }
         }
     }
@@ -590,6 +737,7 @@ fn newStmtNode(kind: StmtKind) -> TreeNode {
         exp_type : ExpType::VOID
     };
     return t;
+
 }
 
 // Funcion que crea un nodo de error (un nodo vacío, ya que no existe el null en RUST)
@@ -610,15 +758,48 @@ fn newErrorNode(kind: ExpKind) -> TreeNode {
         exp_type : ExpType::VOID
     };
     return t;
+
+}
+
+// Nos devuelve un arbol vacio, para cuando no ponemos nada en el bloque (como cuando)
+// dejamos vacio un else
+fn newEmptyNode() -> TreeNode {
+
+    let mut t: TreeNode = TreeNode {
+        hijo1 : None,
+        hijo2 : None,
+        hijo3 : None,
+        hermano : None,
+        attr_op : Some(TokenType::ERROR),
+        kind_stmt: None,
+        kind_exp: None,
+        tipo_nodo: NodeKind::EMPTY,
+        attr_val : None,
+        attr_name : None,
+        lineano : unsafe { token_array[token_actual].linea },
+        exp_type : ExpType::VOID
+    };
+    return t;
+
 }
 
 // Si es el token correcto, entonces avanzamos en la lectura de tokens
 fn coincide(expected: TokenType) {
     unsafe {
         if (token_array[token_actual].token == expected) {
-            token_actual += 1;
+            saltar();
         } else {
             error(expected);
+        }
+    }
+}
+
+// Funcion que salta al siguiente token, se salta el token si es un comentario (ya que eso no nos importa)
+fn saltar() {
+    unsafe {
+        if token_actual < token_array.len() - 1 { token_actual += 1; }
+        if token_array[token_actual].token == TokenType::LINECOMM || token_array[token_actual].token == TokenType::BLOCKCOMM {
+            saltar();
         }
     }
 }

@@ -1,1 +1,19 @@
-x = 5
+program {
+    int x, y;
+    x = 0; // comentario 1
+    y = 4; /* comentario 2 */
+    do {
+        if(x < y) then {
+            y = y - 1;
+        } fi
+    } until(y >= 0);
+    x = 5;
+    {
+        y = a - 4;
+    }
+    if (true or false and (x == 5)) then {
+        x = 5;
+    } else {
+        
+    } fi
+}
