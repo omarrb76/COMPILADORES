@@ -1,3 +1,4 @@
+5 + 6 * 7 / 6
 Hola esto es una
 prueba para idear como sera
 el scanner y despues pasarlo al lenguaje rust
