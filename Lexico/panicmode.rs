@@ -1,3 +1,6 @@
+/* Este archivo es de Panic Mode para los errores, aunque aun así no funciona del
+todo bien, optaremos por usar los errores que ya me brindaba el programa anterior */
+
 use std::env;                                   // Para usar los argumentos del main
 use std::process;                               // Para el mensaje de error
 use std::fs::File;                              // Para leer el archivo
@@ -68,6 +71,9 @@ static mut token_actual: usize = 0;
 
 // Arreglo que contendra todos los tokens que vayamos recuperando
 static mut token_array: Vec<Token> = Vec::new();
+
+// Error para el PANIC MODE, no nos dice todos los errores del código, pero podemos darnos una idea
+static mut error_panic: bool = false;
 
 fn main() -> io::Result<()> {
 
@@ -187,10 +193,10 @@ fn main() -> io::Result<()> {
 
     }
 
-    println!("------ SINTACTICO ERRORES ------");
-    let mut t: TreeNode = programa();
-    println!("------ SINTACTICO ARBOL   ------");
-    println!("Esto pertenece al sintactico");
+    //b_expresion();
+    //asignacion();
+    //lista_sentencia();
+    programa();
 
     Ok(())
 
@@ -307,7 +313,7 @@ fn get_token(lexeme: &String, lineano: i32) -> () {
 
 // programa ::= program ”{” lista-declaración lista-sentencias ”}”
 fn programa() -> TreeNode {
-    //unsafe { println!("ENTRE PROGRAMA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE PROGRAMA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::PROGRAM);
     coincide(TokenType::PROGRAM);
     coincide(TokenType::LBRACKET);
@@ -323,7 +329,7 @@ fn programa() -> TreeNode {
 
 // lista-declaración ::= { declaración }
 fn lista_declaracion() -> TreeNode {
-    //unsafe { println!("ENTRE LISTA_DECLARACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE LISTA_DECLARACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = declaracion();
     unsafe {
         if 
@@ -340,7 +346,7 @@ fn lista_declaracion() -> TreeNode {
 // declaración ::= tipo lista-id ”;”
 // tipo ::= int | float | bool
 fn declaracion() -> TreeNode {
-    //unsafe { println!("ENTRE DECLARACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE DECLARACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::DECLARE);
     unsafe { t.attr_name = Some(token_array[token_actual].lexema.clone()); }
     unsafe {
@@ -365,14 +371,14 @@ fn declaracion() -> TreeNode {
                 error(TokenType::INT_FLOAT_BOOL_LPAREN);
             }
         }
+        if !error_panic { coincide(TokenType::SEMI); error_panic = false; }
     }
-    coincide(TokenType::SEMI);
     return t;
 }
 
 // lista-id ::= identificador { ”,” identificador }
 fn lista_id() -> TreeNode {
-    //unsafe { println!("ENTRE LISTA_ID --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE LISTA_ID --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newExpNode(ExpKind::ID);
     unsafe { t.attr_name = Some(token_array[token_actual].lexema.clone()); }
     coincide(TokenType::ID);
@@ -387,7 +393,7 @@ fn lista_id() -> TreeNode {
 
 // lista-sentencias ::= { sentencias }
 fn lista_sentencia() -> TreeNode {
-    //unsafe { println!("ENTRE LISTA_SENTENCIA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE LISTA_SENTENCIA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = sentencia();
     unsafe {
         if 
@@ -405,7 +411,7 @@ fn lista_sentencia() -> TreeNode {
 
 // sentencia ::= selección | iteración | repetición | sent-read | sent-write | bloque | asignación
 fn sentencia() -> TreeNode {
-    //unsafe { println!("ENTRE SENTENCIA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE SENTENCIA --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode;
     unsafe {
         match token_array[token_actual].token {
@@ -427,7 +433,7 @@ fn sentencia() -> TreeNode {
 
 // selección ::= if ”(” b-expresión ”)” then bloque [ else bloque ] fi
 fn seleccion() -> TreeNode {
-    //unsafe { println!("ENTRE SELECCION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE SELECCION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::IF);
     coincide(TokenType::IF);
     coincide(TokenType::LPAREN);
@@ -447,7 +453,7 @@ fn seleccion() -> TreeNode {
 
 // iteración ::= while ”(” b-expresión ”)” bloque
 fn iteracion() -> TreeNode {
-    //unsafe { println!("ENTRE ITERACION (WHILE) --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE ITERACION (WHILE) --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::WHILE);
     coincide(TokenType::WHILE);
     coincide(TokenType::LPAREN);
@@ -459,7 +465,7 @@ fn iteracion() -> TreeNode {
 
 // repetición ::= do bloque until "(" b-expresión ")" ";"
 fn repeticion() -> TreeNode {
-    //unsafe { println!("ENTRE REPETICION (DO) --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE REPETICION (DO) --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::DO);
     coincide(TokenType::DO);
     t.hijo1 = Some(Box::new(bloque()));
@@ -467,36 +473,36 @@ fn repeticion() -> TreeNode {
     coincide(TokenType::LPAREN);
     t.hijo2 = Some(Box::new(b_expresion()));
     coincide(TokenType::RPAREN);
-    coincide(TokenType::SEMI);
+    unsafe { if !error_panic { coincide(TokenType::SEMI); error_panic = false; } }
     return t;
 }
 
 // sent-read ::= read identificador ";"
 fn sent_read() -> TreeNode {
-    //unsafe { println!("ENTRE SENT_READ --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE SENT_READ --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::READ);
     coincide(TokenType::READ);
     let mut p: TreeNode = newExpNode(ExpKind::ID);
     unsafe { p.attr_name = Some(token_array[token_actual].lexema.clone()); }
     coincide(TokenType::ID);
     t.hijo1 = Some(Box::new(p.clone()));
-    coincide(TokenType::SEMI);
+    unsafe { if !error_panic { coincide(TokenType::SEMI); error_panic = false; } }
     return t;
 }
 
 // sent-write ::= write b-expresión ";"
 fn sent_write() -> TreeNode {
-    //unsafe { println!("ENTRE SENT_WRITE --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE SENT_WRITE --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::WRITE);
     coincide(TokenType::WRITE);
     t.hijo1 = Some(Box::new(b_expresion()));
-    coincide(TokenType::SEMI);
+    unsafe { if !error_panic { coincide(TokenType::SEMI); error_panic = false; } }
     return t;
 }
 
 // bloque ::= ”{” lista-sentencia ”}”
 fn bloque() -> TreeNode {
-    //unsafe { println!("ENTRE BLOQUE --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE BLOQUE --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode;
     coincide(TokenType::LBRACKET);
     unsafe {
@@ -512,7 +518,7 @@ fn bloque() -> TreeNode {
 
 // asignacion ::= identificador "=" b-expresion ";"
 fn asignacion() -> TreeNode {
-    //unsafe { println!("ENTRE ASIGNACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE ASIGNACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::ASSIGN);
     unsafe {
         if token_array[token_actual].token == TokenType::ID {
@@ -520,7 +526,7 @@ fn asignacion() -> TreeNode {
             coincide(TokenType::ID);
             coincide(TokenType::ASSIGN);
             t.hijo1 = Some(Box::new(b_expresion()));
-            coincide(TokenType::SEMI);
+            if !error_panic { coincide(TokenType::SEMI); error_panic = false; }
         }
     }
     return t;
@@ -528,7 +534,7 @@ fn asignacion() -> TreeNode {
 
 // b-expresión ::= b-term { OR b-term }
 fn b_expresion() -> TreeNode {
-    //unsafe { println!("ENTRE B_EXPRESION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE B_EXPRESION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = b_term();
     unsafe {
         while token_array[token_actual].token == TokenType::OR {
@@ -545,7 +551,7 @@ fn b_expresion() -> TreeNode {
 
 // b-term ::= not-factor { AND not-factor }
 fn b_term() -> TreeNode {
-    //unsafe { println!("ENTRE B_TERM --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE B_TERM --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = not_factor();
     unsafe {
         while token_array[token_actual].token == TokenType::AND {
@@ -562,7 +568,7 @@ fn b_term() -> TreeNode {
 
 // not-factor ::= [NOT] b-factor
 fn not_factor() -> TreeNode {
-    //unsafe { println!("ENTRE NOT_FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE NOT_FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode;
     unsafe {
         if token_array[token_actual].token == TokenType::NOT {
@@ -579,7 +585,7 @@ fn not_factor() -> TreeNode {
 
 // b-factor ::= true | false | relación
 fn b_factor() -> TreeNode {
-    //unsafe { println!("ENTRE B_FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE B_FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode;
     unsafe {
         match token_array[token_actual].token {
@@ -597,7 +603,7 @@ fn b_factor() -> TreeNode {
 // relacion ::= expresion [ relOp expresion ]
 // relOp ::= <= | < | > | >= | == | !=
 fn relacion() -> TreeNode {
-    //unsafe { println!("ENTRE RELACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE RELACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = expresion();
     unsafe {
         if token_array[token_actual].token == TokenType::LT || token_array[token_actual].token == TokenType::LTE  ||
@@ -617,7 +623,7 @@ fn relacion() -> TreeNode {
 // expresion -> termino { sumaOp termino }
 // sumaOp -> + | -
 fn expresion() -> TreeNode {
-    //unsafe { println!("ENTRE EXPRESION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE EXPRESION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = termino();
     unsafe {
         while token_array[token_actual].token == TokenType::PLUS || token_array[token_actual].token == TokenType::MINUS {
@@ -635,7 +641,7 @@ fn expresion() -> TreeNode {
 // termino -> signoFactor { multOp signoFactor }
 // multOp -> * | /
 fn termino() -> TreeNode {
-    //unsafe { println!("ENTRE TERMINO --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE TERMINO --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = signoFactor();
     unsafe {
         while token_array[token_actual].token == TokenType::TIMES || token_array[token_actual].token == TokenType::DIVISION {
@@ -652,7 +658,7 @@ fn termino() -> TreeNode {
 
 // signoFactor -> [sumaOp] factor
 fn signoFactor() -> TreeNode {
-    //unsafe { println!("ENTRE SIGNO_FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE SIGNO_FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode;
     unsafe {
         if token_array[token_actual].token == TokenType::PLUS || token_array[token_actual].token == TokenType::MINUS {
@@ -670,7 +676,7 @@ fn signoFactor() -> TreeNode {
 // EL ORIGEN, AQUI SE DETIENE LA LOCURA
 // factor -> "(" b-expresion ")" | numero | identificador
 fn factor() -> TreeNode {
-    //unsafe { println!("ENTRE FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
+    unsafe { println!("ENTRE FACTOR --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode;
     unsafe {
         match token_array[token_actual].token {
@@ -804,9 +810,11 @@ fn saltar() {
     }
 }
 
-// Mostramos al usuario cual fue el error
+// Mostramos al usuario cual fue el error y saltamos hasta tener un punto de control
+// como el punto y coma o el final del archivo (PANIC MODE)
 fn error(expected: TokenType) {
     unsafe {
+        error_panic = true;
         println!(
             "TOKEN INESPERADO => Lexema: {} | Linea: {} | Token: {:?} --- TOKEN ESPERADO: {:?}", 
             token_array[token_actual].lexema,
@@ -814,5 +822,9 @@ fn error(expected: TokenType) {
             token_array[token_actual].token,
             expected
         );
+        while (token_array[token_actual].token != TokenType::SEMI && token_array[token_actual].token != TokenType::ENDFILE) {
+            saltar();
+        }
+        coincide(token_array[token_actual].token);
     }
 }

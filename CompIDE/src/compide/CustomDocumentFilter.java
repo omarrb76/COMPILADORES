@@ -80,7 +80,7 @@ public class CustomDocumentFilter extends DocumentFilter {
     // PATRONES DE PALABRAS RESERVADAS
     private Pattern buildPatternPalabrasReservadas() {
         StringBuilder sb = new StringBuilder();
-        sb.append("\\bprogram\\b|\\bif\\b|\\belse\\b|\\bfi\\b|\\bdo\\b|\\buntil\\b|\\bwhile\\b|\\bread\\b|\\bwrite\\b|\\bfloat\\b|\\bint\\b|\\bbool\\b|\\bnot\\b|\\band\\b|\\bor\\b");
+        sb.append("\\bprogram\\b|\\bif\\b|\\belse\\b|\\bfi\\b|\\bdo\\b|\\buntil\\b|\\bwhile\\b|\\bread\\b|\\bwrite\\b|\\bfloat\\b|\\bint\\b|\\bbool\\b|\\bnot\\b|\\band\\b|\\bor\\b|\\btrue\\b|\\bfalse\\b|\\bthen\\b");
         Pattern p = Pattern.compile(sb.toString());
         return p;
     }

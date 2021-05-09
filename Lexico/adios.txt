@@ -1,5 +1,5 @@
 program {
-    int x, y;
+    int x, ;
     x = 0; // comentario 1
     y = 4; /* comentario 2 */
     do {
@@ -12,7 +12,7 @@ program {
         y = a - 4;
     }
     if (true or false and (x == 5)) then {
-        x = 5;
+        x = 5
     } else {
         
     } fi

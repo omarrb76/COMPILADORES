@@ -8,6 +8,7 @@ package compide;
 
 // IMPORTS
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
@@ -28,6 +29,9 @@ import javax.swing.event.UndoableEditEvent;
 import javax.swing.text.AbstractDocument;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
+
+// Mostrar los mensajes del compilador en el GUI
+enum Compilador { LEXICO, ERROR, SINTACTICO }
 
 // CLASE PRINCIPAL
 public class InterfazGrafica extends JFrame {
@@ -150,9 +154,12 @@ public class InterfazGrafica extends JFrame {
             }
             @Override
             public void changedUpdate(DocumentEvent e) {
-                checarCambioTexto();
+                //checarCambioTexto();
             }
         });
+        
+        Font font = new Font("Consolas", Font.ITALIC, 18);
+        areaTexto.setFont(font);
         
         // ESTE PEDAZO DE CÓDIGO AGREGA EL UNDOMANAGER AL areaTexto
         areaTexto.getDocument().addUndoableEditListener((UndoableEditEvent evt) -> {
@@ -218,7 +225,7 @@ public class InterfazGrafica extends JFrame {
         abrir.addActionListener((ActionEvent e) -> {
             if (editado) {
                 int result = cerrarArchivo();
-                if (result == JOptionPane.NO_OPTION){
+                if (result == JOptionPane.YES_OPTION){
                     cerrarArchivoAbrir();
                 }
             } else {
@@ -254,11 +261,11 @@ public class InterfazGrafica extends JFrame {
             int resultado = cerrarArchivo();
             // Cerramos el archivo
             if (resultado == JOptionPane.YES_OPTION){
+                areaTexto.setEnabled(false);
+                areaTexto.setText(null);
                 acabadoDeCerrar = true;
                 editado = false;
                 mismoArchivo = false;
-                areaTexto.setEnabled(false);
-                areaTexto.setText(null);
                 titulo = "CompIDE";
                 this.setTitle(titulo);
             }
@@ -489,6 +496,7 @@ public class InterfazGrafica extends JFrame {
                         opcion = JOptionPane.YES_OPTION; // Se cierra el archivo
                     }   break;
                 case JOptionPane.NO_OPTION:
+                    System.out.println("Eligio NO guardar");
                     opcion = JOptionPane.YES_OPTION; // Se cierra el archivo
                     break;
                 default:
@@ -540,19 +548,53 @@ public class InterfazGrafica extends JFrame {
             Process proc = Runtime.getRuntime().exec(commands);
 
             BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+            
+            Compilador fase = Compilador.LEXICO;
 
-            String s, res = "";
+            String s, lex = "", err = "", sint = "";
             Boolean primeraLinea = true;
             while ((s = stdInput.readLine()) != null) {
-                if (primeraLinea) {
-                    res = s;
-                    primeraLinea = false;
-                } else {
-                    res += "\n" + s;
+                switch (fase) {
+                    case LEXICO: 
+                        if (s.equals("------ SINTACTICO ERRORES ------")){
+                            primeraLinea = true;
+                            fase = Compilador.ERROR;
+                        } else {
+                            if (primeraLinea) {
+                                lex = s;
+                                primeraLinea = false;
+                            } else {
+                                lex += "\n" + s;
+                            }
+                        }
+                        break;
+                    case ERROR: 
+                        if (s.equals("------ SINTACTICO ARBOL   ------")){
+                            primeraLinea = true;
+                            fase = Compilador.SINTACTICO;
+                        } else {
+                            if (primeraLinea) {
+                                err = s;
+                                primeraLinea = false;
+                            } else {
+                                err += "\n" + s;
+                            }
+                        }
+                        break;
+                    case SINTACTICO: 
+                        if (primeraLinea) {
+                            sint = s;
+                            primeraLinea = false;
+                        } else {
+                            sint += "\n" + s;
+                        }
+                        break;
                 }
             }
             
-            lexico.setText(res);
+            lexico.setText(lex);
+            errores.setText(err);
+            sintatico.setText(sint);
 
             stdInput.close();
             proc.destroy();
@@ -567,6 +609,7 @@ public class InterfazGrafica extends JFrame {
         if (!editado){
             titulo += " *";
             setTitle(titulo);
+            editado = true;
         }
         if (!acabadoDeCerrar){
             editado = true;
