@@ -8,6 +8,7 @@ package compide;
 
 // IMPORTS
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Image;
@@ -123,6 +124,7 @@ public class InterfazGrafica extends JFrame {
         JTabbedPane tabbed = new JTabbedPane();
         
         errores = new JTextPane();
+        errores.setForeground(Color.red);
         resultados = new JTextPane();
         
         errores.setEditable(false);

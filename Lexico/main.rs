@@ -2,6 +2,7 @@ use std::env;                                   // Para usar los argumentos del 
 use std::process;                               // Para el mensaje de error
 use std::fs::File;                              // Para leer el archivo
 use std::io::{self, prelude::*, BufReader};     // Para leer el archivo
+use std::fmt::{self, Debug, Display};
 
 // ENUMS Y STRUCTS PERTENECIENTES AL ANÁLISIS LÉXICO
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -20,6 +21,13 @@ enum TokenType {
     INT_FLOAT_BOOL_LPAREN, STATEMENT_INITIALIZER, CONST_ID_LPAREN
 }
 
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+// Estado en el que se encuentra actualmente (para el analizador léxico getToken)
 #[derive(Debug)]
 enum StateType {
     START, INASSIGN, INCOMMENT, INNUM, INID, INLTE, INEQ, INGTE, INDIFF, DONE
@@ -34,16 +42,22 @@ struct Token {
 }
 
 /************ PERTENECIENTE AL ANÁLISIS SINTÁCTICO ***************/
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum NodeKind { STMT, EXP, EMPTY }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum StmtKind { PROGRAM, IF, WHILE, DO, READ, WRITE, ASSIGN, DECLARE }
 
-#[derive(Copy, Clone)]
+impl fmt::Display for StmtKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 enum ExpKind  { OP, CONST, ID }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum ExpType  { VOID, INT, BOOL, FLOAT }
 
 #[derive(Clone)]
@@ -190,7 +204,7 @@ fn main() -> io::Result<()> {
     println!("------ SINTACTICO ERRORES ------");
     let mut t: TreeNode = programa();
     println!("------ SINTACTICO ARBOL   ------");
-    println!("Esto pertenece al sintactico");
+    imprimir_arbol(t, 0);
 
     Ok(())
 
@@ -537,7 +551,7 @@ fn b_expresion() -> TreeNode {
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(TokenType::OR);
-            p.hijo2 = Some(Box::new(b_term()));
+            t.hijo2 = Some(Box::new(b_term()));
         }
     }
     return t;
@@ -554,7 +568,7 @@ fn b_term() -> TreeNode {
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(TokenType::AND);
-            p.hijo2 = Some(Box::new(not_factor()));
+            t.hijo2 = Some(Box::new(not_factor()));
         }
     }
     return t;
@@ -608,7 +622,7 @@ fn relacion() -> TreeNode {
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(token_array[token_actual].token);
-            p.hijo2 = Some(Box::new(expresion()));
+            t.hijo2 = Some(Box::new(expresion()));
            }
     }
     return t;
@@ -626,7 +640,7 @@ fn expresion() -> TreeNode {
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(token_array[token_actual].token);
-            p.hijo2 = Some(Box::new(termino()));
+            t.hijo2 = Some(Box::new(termino()));
         }
     }
     return t;
@@ -644,7 +658,7 @@ fn termino() -> TreeNode {
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(token_array[token_actual].token);
-            p.hijo2 = Some(Box::new(signoFactor()));
+            t.hijo2 = Some(Box::new(signoFactor()));
         }
     }
     return t;
@@ -814,5 +828,69 @@ fn error(expected: TokenType) {
             token_array[token_actual].token,
             expected
         );
+    }
+}
+
+// Funcion que imprime el Arbol Sintáctico
+fn imprimir_arbol(nodo: TreeNode, identacion: i32) {
+    unsafe {
+        let mut token_string = String::from("");
+        for i in 0..identacion { 
+            if i == identacion - 2 { token_string = token_string + "├"; }
+            else {
+                if i % 2 == 0 { token_string = token_string + "│";  } 
+                else { token_string = token_string + " "; }
+            }
+        }
+        //token_string = token_string + "└";
+        match nodo.tipo_nodo {
+            NodeKind::EXP => {
+                match nodo.kind_exp {
+                    Some(kind) => {
+                        match kind {
+                            ExpKind::OP    => { match nodo.attr_op   { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
+                            ExpKind::CONST => { match nodo.attr_val  { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
+                            ExpKind::ID    => { match nodo.attr_name { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
+                        }
+                    },
+                    None => {}
+                }
+            },
+            NodeKind::STMT => {
+                match nodo.kind_stmt {
+                    Some(kind) => {
+                        match kind {
+                            StmtKind::ASSIGN  => { match nodo.attr_name { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
+                            StmtKind::DO        | 
+                            StmtKind::IF        | 
+                            StmtKind::PROGRAM   | 
+                            StmtKind::READ      | 
+                            StmtKind::WHILE     | 
+                            StmtKind::WRITE   => { match nodo.kind_stmt { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } }
+                            StmtKind::DECLARE => { match nodo.kind_stmt { Some(x) => { token_string = format!("{}{} {:?}", token_string, x.to_string(), nodo.exp_type); }, None => {} } }
+                        }
+                    },
+                    None => {}
+                }
+            },
+            NodeKind::EMPTY => {}
+        }
+        println!("{}", token_string);
+        match nodo.hijo1 {
+            Some(hijo_1)  => { imprimir_arbol(*hijo_1, identacion + 2); },
+            None => {}
+        }
+        match nodo.hijo2 {
+            Some(hijo_2)  => { imprimir_arbol(*hijo_2, identacion + 2); },
+            None => {}
+        }
+        match nodo.hijo3 {
+            Some(hijo_3)  => { imprimir_arbol(*hijo_3, identacion + 2); },
+            None => {}
+        }
+        match nodo.hermano {
+            Some(brother) => { imprimir_arbol(*brother, identacion); },
+            None => {}
+        }
     }
 }
