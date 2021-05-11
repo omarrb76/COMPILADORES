@@ -2,9 +2,10 @@ use std::env;                                   // Para usar los argumentos del 
 use std::process;                               // Para el mensaje de error
 use std::fs::File;                              // Para leer el archivo
 use std::io::{self, prelude::*, BufReader};     // Para leer el archivo
-use std::fmt::{self, Debug, Display};
+use std::fmt::{self, Debug, Display};           // Para poder pasar un enum a String
 
-// ENUMS Y STRUCTS PERTENECIENTES AL ANÁLISIS LÉXICO
+/************ PERTENECIENTE AL ANÁLISIS LÉXICO ******************/
+// Aunque el TokenType también pertenece al análisis sintáctico
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum TokenType {
     /* PALBRAS RESERVADAS */
@@ -20,7 +21,7 @@ enum TokenType {
     /* ERRORES */
     INT_FLOAT_BOOL_LPAREN, STATEMENT_INITIALIZER, CONST_ID_LPAREN
 }
-
+// Pasar de TokenType a String
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
@@ -42,24 +43,35 @@ struct Token {
 }
 
 /************ PERTENECIENTE AL ANÁLISIS SINTÁCTICO ***************/
+// De qué tipo de nodo se trata, uno de statement, expresion o un nodo vacio
+// El nodo vacio son para los errores
 #[derive(Copy, Clone, Debug)]
 enum NodeKind { STMT, EXP, EMPTY }
 
+// Que tipo de statement estamos haciendo
 #[derive(Copy, Clone, Debug)]
 enum StmtKind { PROGRAM, IF, WHILE, DO, READ, WRITE, ASSIGN, DECLARE }
-
+// Pasar StmtKind a String
 impl fmt::Display for StmtKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
+// Tipo de expresion, operador, constante (numero) o identificador
 #[derive(Copy, Clone, Debug)]
 enum ExpKind  { OP, CONST, ID }
 
+// Tipo de variable
 #[derive(Copy, Clone, Debug)]
 enum ExpType  { VOID, INT, BOOL, FLOAT }
 
+// Este es el nodo del arbol, tiene muchisimos atributos, de los cuales no creo que sean
+// necesarios todos forzosamente.
+// El hijo1,2,3 son para los hijos, el hermano es un nodo al mismo nivel que el nodo
+// lineano, nos indica en que linea esta ese token (nodo), si hay algun error el usuario
+// puede ver en que linea se encontro el error. Lo demas son el contenido, varia mucho dependiendo
+// del tipo de nodo que sea el arbol.
 #[derive(Clone)]
 struct TreeNode {
     hijo1: Option<Box<TreeNode>>,
@@ -99,60 +111,60 @@ fn main() -> io::Result<()> {
     let reader = BufReader::new(file);
 
     // Variables de control
-    let mut lineano = 1;                    // Para contar las líneas
-    let mut palabra = String::from("");     // Palabra que separamos en la línea
-    let mut com_linea : bool = false;        // Para saber si tomamos en cuenta los lexemas o no
-    let mut com_bloque : bool = false;       // Son banderas para saber cuando inicia y acaba un comentario
-    let mut com_flag_close : bool = false;
-    let mut com_flag_open : bool = false;
-    let mut special_simbol : bool = false;   // Porque RUST no tiene muchas cosas utiles, necesitamos varias banderas
+    let mut lineano = 1;                        // Para contar las líneas
+    let mut palabra = String::from("");         // Palabra que separamos en la línea
+    let mut com_linea : bool = false;           // Para saber si tomamos en cuenta los lexemas o no
+    let mut com_bloque : bool = false;          // Son banderas para saber cuando inicia y acaba un comentario
+    let mut com_flag_close : bool = false;      // Bandera de comentario cerrado, para saber si el anterior fue un "*"
+    let mut com_flag_open : bool = false;       // Bandera que me indica si recibimos un "/" y saber si el siguiente es "/" hacer comentario
+    let mut special_simbol : bool = false;      // Porque RUST no tiene muchas cosas utiles, necesitamos varias banderas
     let mut special_simbol_char : char = 'a';
 
-    for linea in reader.lines() {           // Leemos linea por linea
+    for linea in reader.lines() { // Leemos linea por linea
 
-        for c in linea?.chars() {           // Caracter por caracter de cada linea
+        for c in linea?.chars() { // Caracter por caracter de cada linea
             
             // Si esta comentado, no tiene sentido estar haciendo los tokens
             if com_linea || com_bloque {
 
-                if c == '*' { com_flag_close = true; }// Si el siguiente caracter es '/' se quita el flag
-                else if c == '/' && com_flag_close { com_bloque = false; com_flag_close = false; }
-                continue;
+                if c == '*' { com_flag_close = true; }                                              // Si el siguiente caracter es '/' se quita el flag de comentario
+                else if c == '/' && com_flag_close { com_bloque = false; com_flag_close = false; }  // desactivamos las banderas de comentarios
+                continue;                                                                           // Nos saltamos todo lo de abajo
 
             }
 
             if com_flag_open { // Teóricamente el caracter anterior fue un '/' y se vació la palabra
 
-                if c == '/' {
+                if c == '/' { // Mandamos a procesar un comentario de linea y activamos la bandera de comentario de linea
                     get_token(&String::from("//"), lineano);
                     com_linea = true;
-                } else if c == '*' {
+                } else if c == '*' { // Mandamos a procesar un comentario de bloque y activamos la bandera de comentario de bloque
                     get_token(&String::from("/*"), lineano);
                     com_bloque = true;
-                } else { get_token(&String::from("/"), lineano); }
-                com_flag_open = false;
-                continue;
+                } else { get_token(&String::from("/"), lineano); } // Mandamos a procesar una division
+                com_flag_open = false; // Desactivamos la bandera de "/"
+                continue; // Nos saltamos al siguiente ciclo
 
             }
 
             if special_simbol { // Teóricamente aqui tendrá uno de estos símbolos: < > ! = y se vació la palabra
 
-                if c == '=' { get_token(&String::from(special_simbol_char.to_string() + "="), lineano); }
-                else { get_token(&special_simbol_char.to_string(), lineano); }
+                if c == '=' { get_token(&String::from(special_simbol_char.to_string() + "="), lineano); } // Mandamos a llamar a un <= >= != ==
+                else { get_token(&special_simbol_char.to_string(), lineano); } // Lo mandamos asi solito < > ! =
                 special_simbol = false;
                 continue;
 
             }
 
-            if c != ' ' {
+            if c != ' ' { // Si es diferente de espacio
                 if  c == '+' || c == '-' || c == '*' || c == '^' || c == ';' ||
-                    c == ',' || c == '(' || c == ')' || c == '{' || c == '}' {
+                    c == ',' || c == '(' || c == ')' || c == '{' || c == '}' { // Estos caracteres son tokens por si solos y no necesitan nada mas, por eso se mandan a procesar al instante
 
-                    if palabra != "" { get_token(&palabra, lineano); }
-                    get_token(&c.to_string(), lineano);
-                    palabra = String::from("");
+                    if palabra != "" { get_token(&palabra, lineano); } // Si hay algo en la palabra
+                    get_token(&c.to_string(), lineano); // Mandamos a procesar el caracter
+                    palabra = String::from(""); // Reiniciamos la palabra a vacia porque ya se mando a procesar y se tiene que vaciar
 
-                } else if c == '/' {
+                } else if c == '/' { // Si recibimos este simbolo encendemos la bandera de un posible comentario y hacemos lo mismo que arribita
 
                     com_flag_open = true;
                     if palabra != "" { get_token(&palabra, lineano); }
@@ -165,7 +177,7 @@ fn main() -> io::Result<()> {
                     if palabra != "" { get_token(&palabra, lineano); }
                     palabra = String::from("");
 
-                } else {
+                } else { // Si no fue ninguno de los casos de arriba solo metemos el caracter a la palabra
 
                     palabra.push(c);
 
@@ -179,6 +191,7 @@ fn main() -> io::Result<()> {
             }
         }
 
+        // Mandamos a procesar la ultima palabra
         if palabra != "" { get_token(&palabra, lineano); }
         palabra = String::from("");
 
@@ -201,6 +214,7 @@ fn main() -> io::Result<()> {
 
     }
 
+    // Imprimos lo que sigue de sintactico
     println!("------ SINTACTICO ERRORES ------");
     let mut t: TreeNode = programa();
     println!("------ SINTACTICO ARBOL   ------");
@@ -210,11 +224,14 @@ fn main() -> io::Result<()> {
 
 }
 
+// Funcion que procesa la palabra y nos regresa un Token
 fn get_token(lexeme: &String, lineano: i32) -> () {
 
+    // Estado inicial del token
     let mut token : TokenType = TokenType::ERROR;
     let mut state : StateType = StateType::START;
 
+    // Si es alguna palabra reservada
     if      lexeme == "program" { token = TokenType::PROGRAM;   }
     else if lexeme == "true"    { token = TokenType::TRUE;      }
     else if lexeme == "false"   { token = TokenType::FALSE;     }
@@ -233,10 +250,11 @@ fn get_token(lexeme: &String, lineano: i32) -> () {
     else if lexeme == "not"     { token = TokenType::NOT;       }
     else if lexeme == "and"     { token = TokenType::AND;       }
     else if lexeme == "or"      { token = TokenType::OR;        }
-    else {
+    else { // No fue una palabra reservada, veamos de que trata
 
         for c in lexeme.chars() {
             
+            // Automata finito
             match state {
                 StateType::START => {
                     if      c.is_digit(10)      { state = StateType::INNUM;     token = TokenType::NUM;         }
@@ -317,7 +335,10 @@ fn get_token(lexeme: &String, lineano: i32) -> () {
     
 }
 
-// Funciones del análisis sintáctico
+// Funciones del análisis sintáctico, estas son potencialmente recursivas y dificil de seguir
+// en resumen, crean un nodo, a ese nodo le agregan hijos y despues lo devuelven a alguna otra funcion que los haya llamado
+// Seguir el procedimiento de estas funciones es muy dificil, si se quiere probar que esa creando el arbol
+// de manera correcta, mejor usa la funcion de imprimir arbol.
 
 // programa ::= program ”{” lista-declaración lista-sentencias ”}”
 fn programa() -> TreeNode {
@@ -832,17 +853,18 @@ fn error(expected: TokenType) {
 }
 
 // Funcion que imprime el Arbol Sintáctico
-fn imprimir_arbol(nodo: TreeNode, identacion: i32) {
+// NOTA MUY IMPORTANTE: pinta bien el arbol, solo que no supe como corregir las ramitas que a veces se siguen imprimiendo debajo de un hijo
+fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiva y la identacion va aumentando dependiendo de en que hijo vaya
     unsafe {
-        let mut token_string = String::from("");
+        let mut token_string = String::from(""); // Cadena vacia
         for i in 0..identacion { 
-            if i == identacion - 2 { token_string = token_string + "├"; }
-            else {
+            if i == identacion - 2 { token_string = token_string + "├"; } // Si la posicion es justo 2 posiciones menor a la identacion
+            else {  // Si debe de ir un espacio o una ramita
                 if i % 2 == 0 { token_string = token_string + "│";  } 
                 else { token_string = token_string + " "; }
             }
         }
-        //token_string = token_string + "└";
+        // En esta seccion se agrega el texto corresponiente (el token que es)
         match nodo.tipo_nodo {
             NodeKind::EXP => {
                 match nodo.kind_exp {
@@ -875,7 +897,10 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) {
             },
             NodeKind::EMPTY => {}
         }
+        // Se imprime el token con su identacion y lineas y todo
         println!("{}", token_string);
+        // Primero se manda a llamar al hijo1, luego el 2, 3 y por ultimo el hermano, observese que se aumenta la identacion
+        // Solo se manda a llamar si existe el hijo o hermano
         match nodo.hijo1 {
             Some(hijo_1)  => { imprimir_arbol(*hijo_1, identacion + 2); },
             None => {}

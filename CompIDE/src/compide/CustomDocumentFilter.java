@@ -17,6 +17,7 @@ import javax.swing.text.StyledDocument;
 
 public class CustomDocumentFilter extends DocumentFilter {
         
+    // Variables de estilo y para guardar la referencia de areaTexto (se encuentra en la interfaz gráfica)
     private final StyledDocument styledDocument;
     private final JTextPane areaTexto;
 
