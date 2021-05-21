@@ -165,7 +165,11 @@ public class InterfazGrafica extends JFrame {
         
         // ESTE PEDAZO DE CÓDIGO AGREGA EL UNDOMANAGER AL areaTexto
         areaTexto.getDocument().addUndoableEditListener((UndoableEditEvent evt) -> {
-            undoManager.addEdit(evt.getEdit());
+            // Si el cambio es de color no lo agregamos
+            AbstractDocument.DefaultDocumentEvent event = (AbstractDocument.DefaultDocumentEvent) evt.getEdit();
+            if (event.getType() != DocumentEvent.EventType.CHANGE) {
+                undoManager.addEdit(evt.getEdit());
+            }
         });
         
         // AGREGAMOS EL FILTRADOR DE TEXTO (COLORES)
