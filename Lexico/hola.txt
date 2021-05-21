@@ -1,15 +1,8 @@
-5 + 6 * 7 / 6
-Hola esto es una
-prueba para idear como sera
-el scanner y despues pasarlo al lenguaje rust
-1234566 < 5555;
-
-int variable1,x,y,z;
-if (x==1) x=1;else x=0;fi // Comentario de linea
-x = 5 + 6;
-/* Este 
-es un comentario de bloque
-jaja */
-float pollo = 34;
-#esteEsUnError
-variable_1;
+program {
+	int x, y, z, s;
+	if (true or false and (x==5))then{
+		x = 5;
+	} else {
+		y = 5;
+	} fi
+}

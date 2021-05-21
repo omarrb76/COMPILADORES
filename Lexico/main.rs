@@ -156,7 +156,7 @@ fn main() -> io::Result<()> {
 
             }
 
-            if c != ' ' { // Si es diferente de espacio
+            if c != ' ' && c != '\t' { // Si es diferente de espacio o tabulador
                 if  c == '+' || c == '-' || c == '*' || c == '^' || c == ';' ||
                     c == ',' || c == '(' || c == ')' || c == '{' || c == '}' { // Estos caracteres son tokens por si solos y no necesitan nada mas, por eso se mandan a procesar al instante
 
