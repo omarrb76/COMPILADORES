@@ -69,19 +69,19 @@ public class CustomDocumentFilter extends DocumentFilter {
             }
         });
     }
-
-    // PATTRONES DE COMENTARIOS
-    private Pattern buildPatternComentario() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("(//.*$?)|(/\\*.[^\\*/]*(\\*/))");
-        Pattern p = Pattern.compile(sb.toString());
-        return p;
-    }
     
     // PATRONES DE PALABRAS RESERVADAS
     private Pattern buildPatternPalabrasReservadas() {
         StringBuilder sb = new StringBuilder();
         sb.append("\\bprogram\\b|\\bif\\b|\\belse\\b|\\bfi\\b|\\bdo\\b|\\buntil\\b|\\bwhile\\b|\\bread\\b|\\bwrite\\b|\\bfloat\\b|\\bint\\b|\\bbool\\b|\\bnot\\b|\\band\\b|\\bor\\b|\\btrue\\b|\\bfalse\\b|\\bthen\\b");
+        Pattern p = Pattern.compile(sb.toString());
+        return p;
+    }
+    
+    // PATRONES DE NUMEROS
+    private Pattern buildPatternNumeros() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\\b\\d+\\b|\\d*.\\d+\\b");
         Pattern p = Pattern.compile(sb.toString());
         return p;
     }
@@ -93,11 +93,11 @@ public class CustomDocumentFilter extends DocumentFilter {
         Pattern p = Pattern.compile(sb.toString());
         return p;
     }
-
-    // PATRONES DE NUMEROS
-    private Pattern buildPatternNumeros() {
+    
+    // PATTRONES DE COMENTARIOS
+    private Pattern buildPatternComentario() {
         StringBuilder sb = new StringBuilder();
-        sb.append("\\b\\d+\\b");
+        sb.append("(//.*$?)|(/\\*.[^\\*/]*(\\*/))");
         Pattern p = Pattern.compile(sb.toString());
         return p;
     }
@@ -109,16 +109,9 @@ public class CustomDocumentFilter extends DocumentFilter {
         
         // Por cuestiones de posicionamiento de texto y debugeo
         String linea = areaTexto.getText().replaceAll("\\r", "");
-
-        // PINTAMOS SIMBOLOS ESPECIALES
-        Matcher matcher = patternSimbolosEspeciales.matcher(linea);
-        while (matcher.find()) {
-            // Change the color of recognized tokens
-            styledDocument.setCharacterAttributes(matcher.start(), matcher.end() - matcher.start(), redAttributeSet, false);
-        }
         
         // PINTAMOS PALABRAS RESERVADAS
-        matcher = patternPalabrasReservadas.matcher(linea);
+        Matcher matcher = patternPalabrasReservadas.matcher(linea);
         while (matcher.find()) {
             // Change the color of recognized tokens
             styledDocument.setCharacterAttributes(matcher.start(), matcher.end() - matcher.start(), blueAttributeSet, false);
@@ -129,6 +122,13 @@ public class CustomDocumentFilter extends DocumentFilter {
         while (matcher.find()) {
             // Change the color of recognized tokens
             styledDocument.setCharacterAttributes(matcher.start(), matcher.end() - matcher.start(), magentaAttributeSet, false);
+        }
+        
+        // PINTAMOS SIMBOLOS ESPECIALES
+        matcher = patternSimbolosEspeciales.matcher(linea);
+        while (matcher.find()) {
+            // Change the color of recognized tokens
+            styledDocument.setCharacterAttributes(matcher.start(), matcher.end() - matcher.start(), redAttributeSet, false);
         }
         
         // PINTAMOS COMENTARIOS
