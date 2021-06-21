@@ -149,10 +149,12 @@ fn main() -> io::Result<()> {
 
             if special_simbol { // Teóricamente aqui tendrá uno de estos símbolos: < > ! = y se vació la palabra
 
-                if c == '=' { get_token(&String::from(special_simbol_char.to_string() + "="), lineano); } // Mandamos a llamar a un <= >= != ==
-                else { get_token(&special_simbol_char.to_string(), lineano); } // Lo mandamos asi solito < > ! =
                 special_simbol = false;
-                continue;
+                if c == '=' { 
+                    get_token(&String::from(special_simbol_char.to_string() + "="), lineano);   // Mandamos a llamar a un <= >= != ==
+                    continue;
+                } 
+                else { get_token(&special_simbol_char.to_string(), lineano); }  // Lo mandamos asi solito < > ! =
 
             }
 
