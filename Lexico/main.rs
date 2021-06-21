@@ -13,7 +13,7 @@ enum TokenType {
     /* SIMBOLOS ESPECIALES */
     PLUS, MINUS, TIMES, DIVISION, POW, LT, LTE, GT, GTE, EQ, DIFF, ASSIGN, SEMI, COMA, LPAREN, RPAREN, LBRACKET, RBRACKET,   
     /* TOKENS DE VARIOS CARACTERES */
-    ID, NUM,        
+    ID, NUMINT, NUMFLOAT,        
     /* COMENTARIOS */
     BLOCKCOMM, LINECOMM,   
     /* BOOK KEEPING TOKENS */
@@ -31,7 +31,7 @@ impl fmt::Display for TokenType {
 // Estado en el que se encuentra actualmente (para el analizador léxico getToken)
 #[derive(Debug)]
 enum StateType {
-    START, INASSIGN, INCOMMENT, INNUM, INID, INLTE, INEQ, INGTE, INDIFF, DONE
+    START, INASSIGN, INCOMMENT, INNUMINT, INNUMFLOAT, INID, INLTE, INEQ, INGTE, INDIFF, DONE
 }
 
 // Estructura que contiene la información de cada Token
@@ -259,14 +259,14 @@ fn get_token(lexeme: &String, lineano: i32) -> () {
             // Automata finito
             match state {
                 StateType::START => {
-                    if      c.is_digit(10)      { state = StateType::INNUM;     token = TokenType::NUM;         }
-                    else if c == '_'            { state = StateType::INID;      token = TokenType::ID;          }
-                    else if c.is_alphabetic()   { state = StateType::INID;      token = TokenType::ID;          }
-                    else if c == '<'            { state = StateType::INLTE;     token = TokenType::LT;          }
-                    else if c == '='            { state = StateType::INEQ;      token = TokenType::ASSIGN;      }
-                    else if c == '>'            { state = StateType::INGTE;     token = TokenType::GT;          }
-                    else if c == '!'            { state = StateType::INDIFF;    token = TokenType::DIFF;        }
-                    else if c == '/'            { state = StateType::INCOMMENT; token = TokenType::DIVISION;    }
+                    if      c.is_digit(10)      { state = StateType::INNUMINT;      token = TokenType::NUMINT;   }
+                    else if c == '_'            { state = StateType::INID;          token = TokenType::ID;       }
+                    else if c.is_alphabetic()   { state = StateType::INID;          token = TokenType::ID;       }
+                    else if c == '<'            { state = StateType::INLTE;         token = TokenType::LT;       }
+                    else if c == '='            { state = StateType::INEQ;          token = TokenType::ASSIGN;   }
+                    else if c == '>'            { state = StateType::INGTE;         token = TokenType::GT;       }
+                    else if c == '!'            { state = StateType::INDIFF;        token = TokenType::DIFF;     }
+                    else if c == '/'            { state = StateType::INCOMMENT;     token = TokenType::DIVISION; }
                     else {
                         match c {
                             '+' => token = TokenType::PLUS,
@@ -286,9 +286,16 @@ fn get_token(lexeme: &String, lineano: i32) -> () {
                         }
                     }
                 },
-                StateType::INNUM => {
-                    if !c.is_digit(10)      { state = StateType::DONE; token = TokenType::ERROR;    } 
-                    else                    { token = TokenType::NUM;                               }
+                StateType::INNUMINT => {
+                    if !c.is_digit(10) { 
+                        if c == '.' { state = StateType::INNUMFLOAT;    token = TokenType::NUMFLOAT; }
+                        else        { state = StateType::DONE;          token = TokenType::ERROR;    } 
+                    }
+                    else { token = TokenType::NUMINT; }
+                },
+                StateType::INNUMFLOAT => {
+                    if !c.is_digit(10)  { state = StateType::DONE; token = TokenType::ERROR; }
+                    else                { token = TokenType::NUMFLOAT; }
                 },
                 StateType::INID => {
                     if !c.is_alphanumeric() 
@@ -711,10 +718,15 @@ fn factor() -> TreeNode {
     let mut t: TreeNode;
     unsafe {
         match token_array[token_actual].token {
-            TokenType::NUM => {
+            TokenType::NUMINT => {
                 t = newExpNode(ExpKind::CONST);
                 t.attr_val = Some(token_array[token_actual].lexema.parse::<i32>().unwrap());
-                coincide(TokenType::NUM);
+                coincide(TokenType::NUMINT);
+            },
+            TokenType::NUMFLOAT => {
+                t = newExpNode(ExpKind::CONST);
+                t.attr_name = Some(token_array[token_actual].lexema.clone());
+                coincide(TokenType::NUMFLOAT);
             },
             TokenType::ID => {
                 t = newExpNode(ExpKind::ID);
@@ -873,7 +885,10 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiv
                     Some(kind) => {
                         match kind {
                             ExpKind::OP    => { match nodo.attr_op   { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
-                            ExpKind::CONST => { match nodo.attr_val  { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
+                            ExpKind::CONST => { 
+                                match nodo.attr_name { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} }
+                                match nodo.attr_val  { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } 
+                            },
                             ExpKind::ID    => { match nodo.attr_name { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
                         }
                     },

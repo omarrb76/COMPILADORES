@@ -550,7 +550,7 @@ public class InterfazGrafica extends JFrame {
     private void compilarLexico () {
         try {
             
-            String[] commands = {"Lexico.exe", manipuladorArchivos.getArchivo().getAbsolutePath()};
+            String[] commands = {"main.exe", manipuladorArchivos.getArchivo().getAbsolutePath()};
             Process proc = Runtime.getRuntime().exec(commands);
 
             BufferedReader stdInput = new BufferedReader(new InputStreamReader(proc.getInputStream()));
