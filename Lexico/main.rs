@@ -88,6 +88,8 @@ struct TreeNode {
     exp_type: ExpType
 }
 
+/************ PERTENECIENTE AL ANÁLISIS SEMÁNTICO ***************/
+
 // Variables globales
 // Posicion en la que nos encontramos
 static mut token_actual: usize = 0;
@@ -630,6 +632,7 @@ fn b_factor() -> TreeNode {
             TokenType::TRUE | TokenType::FALSE => {
                 t = newExpNode(ExpKind::OP);
                 t.attr_op = Some(token_array[token_actual].token);
+                t.exp_type = ExpType::BOOL;
                 coincide(token_array[token_actual].token);
             },
             _ => { t = relacion(); }
@@ -649,6 +652,7 @@ fn relacion() -> TreeNode {
            token_array[token_actual].token == TokenType::EQ || token_array[token_actual].token == TokenType::DIFF {
             let mut p: TreeNode = newExpNode(ExpKind::OP);
             p.attr_op = Some(token_array[token_actual].token);
+            p.exp_type = ExpType::BOOL;
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(token_array[token_actual].token);
@@ -721,11 +725,13 @@ fn factor() -> TreeNode {
             TokenType::NUMINT => {
                 t = newExpNode(ExpKind::CONST);
                 t.attr_val = Some(token_array[token_actual].lexema.parse::<i32>().unwrap());
+                t.exp_type = ExpType::INT;
                 coincide(TokenType::NUMINT);
             },
             TokenType::NUMFLOAT => {
                 t = newExpNode(ExpKind::CONST);
                 t.attr_name = Some(token_array[token_actual].lexema.clone());
+                t.exp_type = ExpType::FLOAT;
                 coincide(TokenType::NUMFLOAT);
             },
             TokenType::ID => {
