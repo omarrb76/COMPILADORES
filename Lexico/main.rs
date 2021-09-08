@@ -73,7 +73,7 @@ enum ExpType  { VOID, INT, BOOL, FLOAT }
 // lineano, nos indica en que linea esta ese token (nodo), si hay algun error el usuario
 // puede ver en que linea se encontro el error. Lo demas son el contenido, varia mucho dependiendo
 // del tipo de nodo que sea el arbol.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct TreeNode {
     hijo1: Option<Box<TreeNode>>,
     hijo2: Option<Box<TreeNode>>,
@@ -289,11 +289,12 @@ fn main() -> io::Result<()> {
     println!("------ SINTACTICO ERRORES ------");
     let mut t: TreeNode = programa();
     println!("------ SINTACTICO ARBOL   ------");
-    imprimir_arbol(t, 0);
+    imprimir_arbol(t.clone(), 0);
 
     // Empieza el análisis semántico
     // Creamos la tabla de símbolos
     let mut tabla_simbolos: TablaDeSimbolos = TablaDeSimbolos { contenido: HashMap::new() };
+    evalType(&mut t, &mut tabla_simbolos);
 
     Ok(())
 
@@ -1012,4 +1013,58 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiv
             None => {}
         }
     }
+}
+
+/* FUNCIONES DEL ANALISIS SEMANTICO, AQUI VAMOS A RECORRER EL ARBOL GENERADO, VAMOS A VALIDAR LOS TIPOS
+REDUCIR UN POCO EL ARBOL HACIENDO LAS OPERACIONES Y MOSTRAR LOS ERRORES QUE PUEDA LLEGAR A TENER EL USUARIO */
+
+fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
+    match nodo.tipo_nodo {
+        NodeKind::EXP => {
+            /* En caso de que sea una expresion */
+            println!("NodeKind del tipo EXP");
+        },
+        NodeKind::STMT => {
+            /* En caso de que sea un statement */
+            print!("NodeKind del tipo STMT: ");
+            match nodo.kind_stmt {
+                Some(kind_stmt) => {
+                    println!("{:?}", kind_stmt);
+                    match kind_stmt {
+                        StmtKind::DECLARE => {
+                            match nodo.exp_type {
+                                ExpType::INT | ExpType::FLOAT | ExpType::BOOL => {
+                                    if nodo.hijo1.is_some() { nodo.hijo1.as_deref_mut().unwrap().exp_type = nodo.exp_type; }
+                                    println!("Hijo 1: {:?}", nodo.hijo1.as_deref_mut().unwrap().exp_type);
+                                }
+                                _ => { println!("Es del tipo void o ninguno"); }
+                            }
+                        },
+                        StmtKind::PROGRAM => {
+                            if nodo.hijo1.is_some() { 
+                                evalType(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos); }
+                        },
+                        _ => {
+                            println!("Default para el switch kind_stmt");
+                        }
+                    }
+                },
+                None => { error_semantico(nodo.clone(), String::from("el nodo es de expresion pero no posee un StmtKind")); }
+            }
+        },
+        _ => {
+            /* Aun no se como se deberia de llegar aqui */
+            println!("NodeKind del tipo NINGUNO");
+        }
+    }
+}
+
+/* Evaluar las declaraciones */
+fn evalDecl(nodo: TreeNode) {
+
+}
+
+/* Imprimir los errores del analisis semantico */
+fn error_semantico(nodo: TreeNode, motivo: String) {
+    println!("Hay un error en el nodo: {:?} | Motivo: {}", nodo, motivo);
 }
