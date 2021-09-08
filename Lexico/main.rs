@@ -3,6 +3,7 @@ use std::process;                               // Para el mensaje de error
 use std::fs::File;                              // Para leer el archivo
 use std::io::{self, prelude::*, BufReader};     // Para leer el archivo
 use std::fmt::{self, Debug, Display};           // Para poder pasar un enum a String
+use std::collections::HashMap;                  // Para la tabla de simbolos
 
 /************ PERTENECIENTE AL ANÁLISIS LÉXICO ******************/
 // Aunque el TokenType también pertenece al análisis sintáctico
@@ -96,6 +97,72 @@ static mut token_actual: usize = 0;
 
 // Arreglo que contendra todos los tokens que vayamos recuperando
 static mut token_array: Vec<Token> = Vec::new();
+
+/* Esta estructura sera la que vaya dentro de la clase de Tabla de simbolos */
+#[derive(Clone, Debug)]
+struct Simbolo {
+    variable: String,
+    lineano: i32,
+    token: TokenType,
+    dtype: ExpType,
+    valor: String
+}
+
+/* Clase pirata para la tabla de simbolos */
+#[derive(Clone, Debug)]
+struct TablaDeSimbolos {
+    contenido: HashMap<String, Simbolo>
+}
+
+/* Implementacion de la clase */
+impl TablaDeSimbolos {
+    /* Comprobamos siempre si ya existe el simbolo, para no meterlo de nuevo */
+    fn insertar(&mut self, llave: String, nuevo: Simbolo) {
+        if !self.buscar(llave.clone()) { self.contenido.insert(llave, nuevo); }
+        else { println!("Ya existe este simbolo! {:?}", nuevo); }
+    }
+
+    /* Actualizar el contenido de un simbolo */
+    fn set(&mut self, llave: String, nuevo: Simbolo) {
+        if !self.buscar(llave.clone()) { println!("No existe el elemento que deseas modificar"); }
+        else { self.contenido.insert(llave, nuevo); }
+    }
+
+    /* Obtenemos el simbolo del contenido */
+    fn get(&mut self, llave: String) -> Simbolo {
+        match self.contenido.get(&llave) {
+            Some(res) => return res.clone(),
+            _ => {
+                println!("No existe el simbolo que deseas acceder");
+                let aux: Simbolo = Simbolo { 
+                    variable: llave.clone(),
+                    lineano: 0,
+                    token: TokenType::ERROR,
+                    dtype: ExpType::VOID,
+                    valor: String::from("0")
+                };
+                return aux;
+            }
+        }
+    }
+
+    /* Remover de la tabla de Símbolos */
+    fn remove(&mut self, llave: String) {
+        self.contenido.remove(&llave);
+    }
+
+    /* Funcion que busca la llave dentro del hash */
+    fn buscar(&mut self, llave: String) -> bool {
+        let mut res = self.contenido.contains_key(&llave);
+        if !res { return false; }
+        else { return true; }
+    }
+
+    /* Funcion para imprimir */
+    fn imprimir(&mut self) {
+        println!("Imprimiendo los valores de la tabla de simbolos: {:?}", self);
+    }
+}
 
 fn main() -> io::Result<()> {
 
@@ -223,6 +290,10 @@ fn main() -> io::Result<()> {
     let mut t: TreeNode = programa();
     println!("------ SINTACTICO ARBOL   ------");
     imprimir_arbol(t, 0);
+
+    // Empieza el análisis semántico
+    // Creamos la tabla de símbolos
+    let mut tabla_simbolos: TablaDeSimbolos = TablaDeSimbolos { contenido: HashMap::new() };
 
     Ok(())
 

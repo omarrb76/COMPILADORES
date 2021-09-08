@@ -59,6 +59,11 @@ impl TablaDeSimbolos {
         if !res { return false; }
         else { return true; }
     }
+
+    /* Funcion para imprimir */
+    fn imprimir(&mut self) {
+        println!("Imprimiendo los valores de la tabla de simbolos: {:?}", self);
+    }
 }
 
 /* Probando la clase */
