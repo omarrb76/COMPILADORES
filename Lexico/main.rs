@@ -51,7 +51,7 @@ enum NodeKind { STMT, EXP, EMPTY }
 
 // Que tipo de statement estamos haciendo
 #[derive(Copy, Clone, Debug)]
-enum StmtKind { PROGRAM, IF, WHILE, DO, READ, WRITE, ASSIGN, DECLARE }
+enum StmtKind { PROGRAM, IF, WHILE, DO, READ, WRITE, ASSIGN, DECLARE, UNDEFINED }
 // Pasar StmtKind a String
 impl fmt::Display for StmtKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -61,7 +61,7 @@ impl fmt::Display for StmtKind {
 
 // Tipo de expresion, operador, constante (numero) o identificador
 #[derive(Copy, Clone, Debug)]
-enum ExpKind  { OP, CONST, ID }
+enum ExpKind  { OP, CONST, ID, UNDEFINED }
 
 // Tipo de variable
 #[derive(Copy, Clone, Debug)]
@@ -79,14 +79,12 @@ struct TreeNode {
     hijo2: Option<Box<TreeNode>>,
     hijo3: Option<Box<TreeNode>>,
     hermano: Option<Box<TreeNode>>,
+    valor: String,
+    token: TokenType,
+    dtype: ExpType,
     lineano: i32,
     tipo_nodo: NodeKind,
-    kind_stmt: Option<StmtKind>,
-    kind_exp: Option<ExpKind>,
-    attr_op: Option<TokenType>,
-    attr_val: Option<i32>,
-    attr_name: Option<String>,
-    exp_type: ExpType
+    kind_stmt: StmtKind
 }
 
 /************ PERTENECIENTE AL ANÁLISIS SEMÁNTICO ***************/
@@ -460,26 +458,25 @@ fn lista_declaracion() -> TreeNode {
 fn declaracion() -> TreeNode {
     //unsafe { println!("ENTRE DECLARACION --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::DECLARE);
-    unsafe { t.attr_name = Some(token_array[token_actual].lexema.clone()); }
     unsafe {
         match token_array[token_actual].token {
             TokenType::INT => {
-                t.exp_type = ExpType::INT;
+                t.dtype = ExpType::INT;
                 coincide(TokenType::INT);
                 t.hijo1 = Some(Box::new(lista_id()));
             },
             TokenType::FLOAT => {
-                t.exp_type = ExpType::FLOAT;
+                t.dtype = ExpType::FLOAT;
                 coincide(TokenType::FLOAT);
                 t.hijo1 = Some(Box::new(lista_id()));
             },
             TokenType::BOOL => {
-                t.exp_type = ExpType::BOOL;
+                t.dtype = ExpType::BOOL;
                 coincide(TokenType::BOOL);
                 t.hijo1 = Some(Box::new(lista_id()));
             },
             _ => {
-                t = newErrorNode(ExpKind::OP);
+                t = newErrorNode();
                 error(TokenType::INT_FLOAT_BOOL_LPAREN);
             }
         }
@@ -491,8 +488,7 @@ fn declaracion() -> TreeNode {
 // lista-id ::= identificador { ”,” identificador }
 fn lista_id() -> TreeNode {
     //unsafe { println!("ENTRE LISTA_ID --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
-    let mut t: TreeNode = newExpNode(ExpKind::ID);
-    unsafe { t.attr_name = Some(token_array[token_actual].lexema.clone()); }
+    let mut t: TreeNode = newExpNode();
     coincide(TokenType::ID);
     unsafe {
         if token_array[token_actual].token == TokenType::COMA {
@@ -535,7 +531,7 @@ fn sentencia() -> TreeNode {
             TokenType::LBRACKET =>  { t = bloque();     },
             TokenType::ID =>        { t = asignacion(); },
             _ => {
-                t = newErrorNode(ExpKind::OP);
+                t = newErrorNode();
                 error(TokenType::STATEMENT_INITIALIZER);
             }
         }
@@ -594,8 +590,7 @@ fn sent_read() -> TreeNode {
     //unsafe { println!("ENTRE SENT_READ --- TOKEN ACTUAL: {:?}", token_array[token_actual].token); }
     let mut t: TreeNode = newStmtNode(StmtKind::READ);
     coincide(TokenType::READ);
-    let mut p: TreeNode = newExpNode(ExpKind::ID);
-    unsafe { p.attr_name = Some(token_array[token_actual].lexema.clone()); }
+    let mut p: TreeNode = newExpNode();
     coincide(TokenType::ID);
     t.hijo1 = Some(Box::new(p.clone()));
     coincide(TokenType::SEMI);
@@ -634,7 +629,6 @@ fn asignacion() -> TreeNode {
     let mut t: TreeNode = newStmtNode(StmtKind::ASSIGN);
     unsafe {
         if token_array[token_actual].token == TokenType::ID {
-            t.attr_name = Some(token_array[token_actual].lexema.clone());
             coincide(TokenType::ID);
             coincide(TokenType::ASSIGN);
             t.hijo1 = Some(Box::new(b_expresion()));
@@ -650,8 +644,7 @@ fn b_expresion() -> TreeNode {
     let mut t: TreeNode = b_term();
     unsafe {
         while token_array[token_actual].token == TokenType::OR {
-            let mut p: TreeNode = newExpNode(ExpKind::OP);
-            p.attr_op = Some(token_array[token_actual].token);
+            let mut p: TreeNode = newExpNode();
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(TokenType::OR);
@@ -667,8 +660,7 @@ fn b_term() -> TreeNode {
     let mut t: TreeNode = not_factor();
     unsafe {
         while token_array[token_actual].token == TokenType::AND {
-            let mut p: TreeNode = newExpNode(ExpKind::OP);
-            p.attr_op = Some(token_array[token_actual].token);
+            let mut p: TreeNode = newExpNode();
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(TokenType::AND);
@@ -684,8 +676,7 @@ fn not_factor() -> TreeNode {
     let mut t: TreeNode;
     unsafe {
         if token_array[token_actual].token == TokenType::NOT {
-            t = newExpNode(ExpKind::OP);
-            t.attr_op = Some(token_array[token_actual].token);
+            t = newExpNode();
             coincide(TokenType::NOT);
             t.hijo1 = Some(Box::new(b_factor()));
         } else {
@@ -702,9 +693,8 @@ fn b_factor() -> TreeNode {
     unsafe {
         match token_array[token_actual].token {
             TokenType::TRUE | TokenType::FALSE => {
-                t = newExpNode(ExpKind::OP);
-                t.attr_op = Some(token_array[token_actual].token);
-                t.exp_type = ExpType::BOOL;
+                t = newExpNode();
+                t.dtype = ExpType::BOOL;
                 coincide(token_array[token_actual].token);
             },
             _ => { t = relacion(); }
@@ -722,9 +712,8 @@ fn relacion() -> TreeNode {
         if token_array[token_actual].token == TokenType::LT || token_array[token_actual].token == TokenType::LTE  ||
            token_array[token_actual].token == TokenType::GT || token_array[token_actual].token == TokenType::GTE  ||
            token_array[token_actual].token == TokenType::EQ || token_array[token_actual].token == TokenType::DIFF {
-            let mut p: TreeNode = newExpNode(ExpKind::OP);
-            p.attr_op = Some(token_array[token_actual].token);
-            p.exp_type = ExpType::BOOL;
+            let mut p: TreeNode = newExpNode();
+            p.dtype = ExpType::BOOL;
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(token_array[token_actual].token);
@@ -741,8 +730,7 @@ fn expresion() -> TreeNode {
     let mut t: TreeNode = termino();
     unsafe {
         while token_array[token_actual].token == TokenType::PLUS || token_array[token_actual].token == TokenType::MINUS {
-            let mut p: TreeNode = newExpNode(ExpKind::OP);
-            p.attr_op = Some(token_array[token_actual].token);
+            let mut p: TreeNode = newExpNode();
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(token_array[token_actual].token);
@@ -759,8 +747,7 @@ fn termino() -> TreeNode {
     let mut t: TreeNode = signoFactor();
     unsafe {
         while token_array[token_actual].token == TokenType::TIMES || token_array[token_actual].token == TokenType::DIVISION {
-            let mut p: TreeNode = newExpNode(ExpKind::OP);
-            p.attr_op = Some(token_array[token_actual].token);
+            let mut p: TreeNode = newExpNode();
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(token_array[token_actual].token);
@@ -776,8 +763,7 @@ fn signoFactor() -> TreeNode {
     let mut t: TreeNode;
     unsafe {
         if token_array[token_actual].token == TokenType::PLUS || token_array[token_actual].token == TokenType::MINUS {
-            t = newExpNode(ExpKind::OP);
-            t.attr_op = Some(token_array[token_actual].token);
+            t = newExpNode();
             coincide(token_array[token_actual].token);
             t.hijo1 = Some(Box::new(factor()));
         } else {
@@ -795,20 +781,17 @@ fn factor() -> TreeNode {
     unsafe {
         match token_array[token_actual].token {
             TokenType::NUMINT => {
-                t = newExpNode(ExpKind::CONST);
-                t.attr_val = Some(token_array[token_actual].lexema.parse::<i32>().unwrap());
-                t.exp_type = ExpType::INT;
+                t = newExpNode();
+                t.dtype = ExpType::INT;
                 coincide(TokenType::NUMINT);
             },
             TokenType::NUMFLOAT => {
-                t = newExpNode(ExpKind::CONST);
-                t.attr_name = Some(token_array[token_actual].lexema.clone());
-                t.exp_type = ExpType::FLOAT;
+                t = newExpNode();
+                t.dtype = ExpType::FLOAT;
                 coincide(TokenType::NUMFLOAT);
             },
             TokenType::ID => {
-                t = newExpNode(ExpKind::ID);
-                t.attr_name = Some(token_array[token_actual].lexema.clone());
+                t = newExpNode();
                 coincide(TokenType::ID);
             },
             TokenType::LPAREN => {
@@ -817,7 +800,7 @@ fn factor() -> TreeNode {
                 coincide(TokenType::RPAREN);
             },
             _ => {
-                t = newErrorNode(ExpKind::OP);
+                t = newErrorNode();
                 error(TokenType::CONST_ID_LPAREN);
             }
         }
@@ -826,21 +809,19 @@ fn factor() -> TreeNode {
 }
 
 // Nuevo nodo de expresion, estos sirven para los operadores, identificadores y numeros
-fn newExpNode(kind: ExpKind) -> TreeNode {
+fn newExpNode() -> TreeNode {
 
     let mut t: TreeNode = TreeNode {
-        hijo1 : None,
-        hijo2 : None,
-        hijo3 : None,
-        hermano : None,
-        attr_op : None,
-        kind_stmt: None,
-        kind_exp: Some(kind),
+        hijo1: None,
+        hijo2: None,
+        hijo3: None,
+        hermano: None,
+        valor: unsafe { token_array[token_actual].lexema.clone() },
+        token: unsafe { token_array[token_actual].token },
+        dtype: ExpType::VOID,
+        lineano: unsafe { token_array[token_actual].linea },
         tipo_nodo: NodeKind::EXP,
-        attr_val : None,
-        attr_name : None,
-        lineano : unsafe { token_array[token_actual].linea },
-        exp_type : ExpType::VOID
+        kind_stmt: StmtKind::UNDEFINED
     };
     return t;
 }
@@ -850,39 +831,35 @@ fn newExpNode(kind: ExpKind) -> TreeNode {
 fn newStmtNode(kind: StmtKind) -> TreeNode {
 
     let mut t: TreeNode = TreeNode {
-        hijo1 : None,
-        hijo2 : None,
-        hijo3 : None,
-        hermano : None,
-        attr_op : None,
-        kind_stmt: Some(kind),
-        kind_exp: None,
+        hijo1: None,
+        hijo2: None,
+        hijo3: None,
+        hermano: None,
+        valor: unsafe { token_array[token_actual].lexema.clone() },
+        token: unsafe { token_array[token_actual].token },
+        dtype: ExpType::VOID,
+        lineano: unsafe { token_array[token_actual].linea },
         tipo_nodo: NodeKind::STMT,
-        attr_val : None,
-        attr_name : None,
-        lineano : unsafe { token_array[token_actual].linea },
-        exp_type : ExpType::VOID
+        kind_stmt: kind
     };
     return t;
 
 }
 
 // Funcion que crea un nodo de error (un nodo vacío, ya que no existe el null en RUST)
-fn newErrorNode(kind: ExpKind) -> TreeNode {
+fn newErrorNode() -> TreeNode {
 
     let mut t: TreeNode = TreeNode {
-        hijo1 : None,
-        hijo2 : None,
-        hijo3 : None,
-        hermano : None,
-        attr_op : Some(TokenType::ERROR),
-        kind_stmt: None,
-        kind_exp: Some(kind),
-        tipo_nodo: NodeKind::EXP,
-        attr_val : None,
-        attr_name : None,
-        lineano : unsafe { token_array[token_actual].linea },
-        exp_type : ExpType::VOID
+        hijo1: None,
+        hijo2: None,
+        hijo3: None,
+        hermano: None,
+        valor: unsafe { token_array[token_actual].lexema.clone() },
+        token: TokenType::ERROR,
+        dtype: ExpType::VOID,
+        lineano: unsafe { token_array[token_actual].linea },
+        tipo_nodo: NodeKind::EMPTY,
+        kind_stmt: StmtKind::UNDEFINED
     };
     return t;
 
@@ -893,18 +870,16 @@ fn newErrorNode(kind: ExpKind) -> TreeNode {
 fn newEmptyNode() -> TreeNode {
 
     let mut t: TreeNode = TreeNode {
-        hijo1 : None,
-        hijo2 : None,
-        hijo3 : None,
-        hermano : None,
-        attr_op : Some(TokenType::ERROR),
-        kind_stmt: None,
-        kind_exp: None,
+        hijo1: None,
+        hijo2: None,
+        hijo3: None,
+        hermano: None,
+        valor: String::from(""),
+        token: TokenType::ERROR,
+        dtype: ExpType::VOID,
+        lineano: 0,
         tipo_nodo: NodeKind::EMPTY,
-        attr_val : None,
-        attr_name : None,
-        lineano : unsafe { token_array[token_actual].linea },
-        exp_type : ExpType::VOID
+        kind_stmt: StmtKind::UNDEFINED
     };
     return t;
 
@@ -959,35 +934,19 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiv
         // En esta seccion se agrega el texto corresponiente (el token que es)
         match nodo.tipo_nodo {
             NodeKind::EXP => {
-                match nodo.kind_exp {
-                    Some(kind) => {
-                        match kind {
-                            ExpKind::OP    => { match nodo.attr_op   { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
-                            ExpKind::CONST => { 
-                                match nodo.attr_name { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} }
-                                match nodo.attr_val  { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } 
-                            },
-                            ExpKind::ID    => { match nodo.attr_name { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
-                        }
-                    },
-                    None => {}
-                }
+                token_string = format!("{}{}", token_string, nodo.valor);
             },
             NodeKind::STMT => {
                 match nodo.kind_stmt {
-                    Some(kind) => {
-                        match kind {
-                            StmtKind::ASSIGN  => { match nodo.attr_name { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } },
-                            StmtKind::DO        | 
-                            StmtKind::IF        | 
-                            StmtKind::PROGRAM   | 
-                            StmtKind::READ      | 
-                            StmtKind::WHILE     | 
-                            StmtKind::WRITE   => { match nodo.kind_stmt { Some(x) => { token_string = format!("{}{}", token_string, x.to_string()); }, None => {} } }
-                            StmtKind::DECLARE => { match nodo.kind_stmt { Some(x) => { token_string = format!("{}{} {:?}", token_string, x.to_string(), nodo.exp_type); }, None => {} } }
-                        }
-                    },
-                    None => {}
+                    StmtKind::ASSIGN    |
+                    StmtKind::DO        | 
+                    StmtKind::IF        | 
+                    StmtKind::PROGRAM   | 
+                    StmtKind::READ      | 
+                    StmtKind::WHILE     | 
+                    StmtKind::WRITE   => { token_string = format!("{}{}", token_string, nodo.valor); }
+                    StmtKind::DECLARE => { token_string = format!("{}{} {:?}", token_string, nodo.valor, nodo.dtype); },
+                    _ => {}
                 }
             },
             NodeKind::EMPTY => {}
@@ -1026,30 +985,24 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
         },
         NodeKind::STMT => {
             /* En caso de que sea un statement */
-            print!("NodeKind del tipo STMT: ");
+            println!("NodeKind del tipo STMT: {:?}", nodo.kind_stmt);
             match nodo.kind_stmt {
-                Some(kind_stmt) => {
-                    println!("{:?}", kind_stmt);
-                    match kind_stmt {
-                        StmtKind::DECLARE => {
-                            match nodo.exp_type {
-                                ExpType::INT | ExpType::FLOAT | ExpType::BOOL => {
-                                    if nodo.hijo1.is_some() { nodo.hijo1.as_deref_mut().unwrap().exp_type = nodo.exp_type; }
-                                    evalDecl(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos)
-                                }
-                                _ => { println!("Es del tipo void o ninguno"); }
-                            }
-                        },
-                        StmtKind::PROGRAM => {
-                            if nodo.hijo1.is_some() { 
-                                evalType(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos); }
-                        },
-                        _ => {
-                            println!("Default para el switch kind_stmt");
+                StmtKind::DECLARE => {
+                    match nodo.dtype {
+                        ExpType::INT | ExpType::FLOAT | ExpType::BOOL => {
+                            if nodo.hijo1.is_some() { nodo.hijo1.as_deref_mut().unwrap().dtype = nodo.dtype; }
+                            evalDecl(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
                         }
+                        _ => { println!("Es del tipo void o ninguno"); }
                     }
                 },
-                None => { error_semantico(nodo.clone(), String::from("el nodo es de expresion pero no posee un StmtKind")); }
+                StmtKind::PROGRAM => {
+                    if nodo.hijo1.is_some() { 
+                        evalType(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos); }
+                },
+                _ => {
+                    println!("Default para el switch kind_stmt");
+                }
             }
         },
         _ => {
@@ -1062,19 +1015,22 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 /* Evaluar las declaraciones */
 fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
     let mut nuevo_simbolo = Simbolo {
-        variable: nodo.attr_name.as_ref().unwrap().to_string(),
+        variable: nodo.valor.clone(),
         lineano: nodo.lineano,
         token: TokenType::ID,
-        dtype: nodo.exp_type,
+        dtype: nodo.dtype,
         valor: String::from("")
     };
     match nuevo_simbolo.dtype {
-        ExpType::BOOL => { nuevo_simbolo.valor = .as_ref().unwrap().to_string() },
-        ExpType::INT => {}
+        ExpType::BOOL => { nuevo_simbolo.valor = nodo.valor.clone(); },
+        ExpType::INT => {},
+        _ => {}
     }
-    tabla_simbolos.insertar(nodo.attr_name.clone(), Simbolo {
-        
-    });
+    tabla_simbolos.insertar(nodo.valor.clone(), nuevo_simbolo);
+    if nodo.hermano.is_some() {
+        nodo.hermano.as_deref_mut().unwrap().dtype = nodo.dtype;
+        evalDecl(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos);
+    }
 }
 
 /* Imprimir los errores del analisis semantico */
