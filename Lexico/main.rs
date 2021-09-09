@@ -1035,7 +1035,7 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                             match nodo.exp_type {
                                 ExpType::INT | ExpType::FLOAT | ExpType::BOOL => {
                                     if nodo.hijo1.is_some() { nodo.hijo1.as_deref_mut().unwrap().exp_type = nodo.exp_type; }
-                                    println!("Hijo 1: {:?}", nodo.hijo1.as_deref_mut().unwrap().exp_type);
+                                    evalDecl(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos)
                                 }
                                 _ => { println!("Es del tipo void o ninguno"); }
                             }
@@ -1060,8 +1060,21 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 }
 
 /* Evaluar las declaraciones */
-fn evalDecl(nodo: TreeNode) {
-
+fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
+    let mut nuevo_simbolo = Simbolo {
+        variable: nodo.attr_name.as_ref().unwrap().to_string(),
+        lineano: nodo.lineano,
+        token: TokenType::ID,
+        dtype: nodo.exp_type,
+        valor: String::from("")
+    };
+    match nuevo_simbolo.dtype {
+        ExpType::BOOL => { nuevo_simbolo.valor = .as_ref().unwrap().to_string() },
+        ExpType::INT => {}
+    }
+    tabla_simbolos.insertar(nodo.attr_name.clone(), Simbolo {
+        
+    });
 }
 
 /* Imprimir los errores del analisis semantico */
