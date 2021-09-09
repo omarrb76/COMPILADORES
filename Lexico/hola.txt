@@ -1,5 +1,8 @@
 program {
 	int x, y, z, s;
+    bool n;
+    s = 4;
+    n = false;
 	if (true or false and (x==5))then{
 		x = 5;
 	} else {

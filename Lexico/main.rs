@@ -131,7 +131,7 @@ impl TablaDeSimbolos {
         match self.contenido.get(&llave) {
             Some(res) => return res.clone(),
             _ => {
-                println!("No existe el simbolo que deseas acceder");
+                println!("No existe el simbolo que deseas acceder, variable: {}", llave);
                 let aux: Simbolo = Simbolo { 
                     variable: llave.clone(),
                     lineano: 0,
@@ -158,7 +158,10 @@ impl TablaDeSimbolos {
 
     /* Funcion para imprimir */
     fn imprimir(&mut self) {
-        println!("Imprimiendo los valores de la tabla de simbolos: {:?}", self);
+        println!("Imprimiendo los valores de la tabla de simbolos:");
+        for (key, value) in &self.contenido {
+            println!("{:?} | {:?}", key, value);
+        }
     }
 }
 
@@ -293,6 +296,8 @@ fn main() -> io::Result<()> {
     // Creamos la tabla de símbolos
     let mut tabla_simbolos: TablaDeSimbolos = TablaDeSimbolos { contenido: HashMap::new() };
     evalType(&mut t, &mut tabla_simbolos);
+
+    tabla_simbolos.imprimir();
 
     Ok(())
 
@@ -982,23 +987,50 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
         NodeKind::EXP => {
             /* En caso de que sea una expresion */
             println!("NodeKind del tipo EXP");
+            match nodo.token {
+                TokenType::ID => {
+                    
+                },
+                __ => {}
+            }
         },
         NodeKind::STMT => {
             /* En caso de que sea un statement */
             println!("NodeKind del tipo STMT: {:?}", nodo.kind_stmt);
             match nodo.kind_stmt {
+                /* Esta es la seccion de declaraciones */
                 StmtKind::DECLARE => {
                     match nodo.dtype {
                         ExpType::INT | ExpType::FLOAT | ExpType::BOOL => {
                             if nodo.hijo1.is_some() { nodo.hijo1.as_deref_mut().unwrap().dtype = nodo.dtype; }
                             evalDecl(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                            if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
                         }
                         _ => { println!("Es del tipo void o ninguno"); }
                     }
                 },
                 StmtKind::PROGRAM => {
+                    /* Evaluamos las declaraciones */
                     if nodo.hijo1.is_some() { 
                         evalType(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos); }
+                    /* Evaluamos el programa en si */
+                    if nodo.hijo2.is_some() { 
+                        evalType(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos); }
+                },
+                StmtKind::ASSIGN => {
+                    if nodo.hijo1.is_some() {
+
+                        /* Evaluamos la asignacion */
+                        evalAssg(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                        
+                        /* Obtenemos el id si es que existe */
+                        let mut temp = tabla_simbolos.get(nodo.valor.clone());
+                        if temp.token == TokenType::ERROR { process::exit(0x0100); }
+                        nodo.dtype = temp.dtype;
+
+                        /* Comprobamos que no hay conflictos con los tipos de valores */
+
+                    }
                 },
                 _ => {
                     println!("Default para el switch kind_stmt");
@@ -1014,23 +1046,29 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 
 /* Evaluar las declaraciones */
 fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
+
+    /* Añadimos la variable a la tabla de simbolos */
     let mut nuevo_simbolo = Simbolo {
         variable: nodo.valor.clone(),
         lineano: nodo.lineano,
         token: TokenType::ID,
         dtype: nodo.dtype,
-        valor: String::from("")
+        valor: nodo.valor.clone()
     };
-    match nuevo_simbolo.dtype {
-        ExpType::BOOL => { nuevo_simbolo.valor = nodo.valor.clone(); },
-        ExpType::INT => {},
-        _ => {}
-    }
+    println!("Agregando nuevi simbolo: {:?}", nuevo_simbolo);
     tabla_simbolos.insertar(nodo.valor.clone(), nuevo_simbolo);
+
+    /* Si tiene hermanos en la declaracion, pues tambien les daremos el mismo tipo de dato */
     if nodo.hermano.is_some() {
         nodo.hermano.as_deref_mut().unwrap().dtype = nodo.dtype;
         evalDecl(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos);
     }
+}
+
+/* Evalua la asignacion, asegurandose de que el tipo final de estas expresiones sean
+del mismo tipo de dato, ademas hace las operaciones necesarias */
+fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
+
 }
 
 /* Imprimir los errores del analisis semantico */
