@@ -60,11 +60,11 @@ impl fmt::Display for StmtKind {
 }
 
 // Tipo de expresion, operador, constante (numero) o identificador
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum ExpKind  { OP, CONST, ID, UNDEFINED }
 
 // Tipo de variable
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum ExpType  { VOID, INT, BOOL, FLOAT }
 
 // Este es el nodo del arbol, tiene muchisimos atributos, de los cuales no creo que sean
@@ -1069,9 +1069,32 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 del mismo tipo de dato, ademas hace las operaciones necesarias */
 fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 
+    match nodo.token {
+        /* Si es cualquier operador, tienen que existir dos hijos */
+        TokenType::PLUS | TokenType::MINUS | TokenType::TIMES | TokenType::DIVISION => {
+
+            /* Si tiene hijos */
+            if nodo.hijo1.is_some() && nodo.hijo2.is_some() {
+
+                /* Evaluamos a los hijos */
+                evalAssg(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                evalAssg(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+
+                /* Preguntamos si los dos dTypes son iguales o entra en conflicto */
+                if nodo.hijo1.as_deref().unwrap().dtype != nodo.hijo1.as_deref().unwrap().dtype {
+                    error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden evalAssg()"));
+                }
+
+            }
+
+        },
+        _ => {}
+    }
+
 }
 
 /* Imprimir los errores del analisis semantico */
 fn error_semantico(nodo: TreeNode, motivo: String) {
-    println!("Hay un error en el nodo: {:?} | Motivo: {}", nodo, motivo);
+    println!("Hay un error en el nodo: \n{:?}\nMotivo: {}", nodo, motivo);
+    process::exit(0x0100);
 }
