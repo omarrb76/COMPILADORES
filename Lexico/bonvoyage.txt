@@ -1,0 +1,5 @@
+program {
+    int x, y;
+    x = 4 + 5;
+    y = 4 + x;
+}

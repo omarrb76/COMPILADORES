@@ -294,10 +294,13 @@ fn main() -> io::Result<()> {
 
     // Empieza el análisis semántico
     // Creamos la tabla de símbolos
+    println!("------ SEMANTICO ERRORES -------");
     let mut tabla_simbolos: TablaDeSimbolos = TablaDeSimbolos { contenido: HashMap::new() };
     evalType(&mut t, &mut tabla_simbolos);
-
     tabla_simbolos.imprimir();
+
+    println!("------ SEMANTICO ARBOL    ------");
+    imprimir_arbol(t.clone(), 0);
 
     Ok(())
 
@@ -949,7 +952,7 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiv
                     StmtKind::PROGRAM   | 
                     StmtKind::READ      | 
                     StmtKind::WHILE     | 
-                    StmtKind::WRITE   => { token_string = format!("{}{}", token_string, nodo.valor); }
+                    StmtKind::WRITE   => { token_string = format!("{}{} {:?}", token_string, nodo.valor, nodo.kind_stmt); }
                     StmtKind::DECLARE => { token_string = format!("{}{} {:?}", token_string, nodo.valor, nodo.dtype); },
                     _ => {}
                 }
@@ -983,6 +986,12 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiv
 REDUCIR UN POCO EL ARBOL HACIENDO LAS OPERACIONES Y MOSTRAR LOS ERRORES QUE PUEDA LLEGAR A TENER EL USUARIO */
 
 fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
+
+    /* (*nodo).hijo1 = None;
+    println!("Hola tontos {:?}", nodo.hijo1);
+    (*nodo).hijo2 = None;
+    return;
+ */
     match nodo.tipo_nodo {
         NodeKind::EXP => {
             /* En caso de que sea una expresion */
@@ -1002,8 +1011,9 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                 StmtKind::DECLARE => {
                     match nodo.dtype {
                         ExpType::INT | ExpType::FLOAT | ExpType::BOOL => {
-                            if nodo.hijo1.is_some() { nodo.hijo1.as_deref_mut().unwrap().dtype = nodo.dtype; }
+                            if nodo.hijo1.is_some() { (*nodo).hijo1.as_deref_mut().unwrap().dtype = nodo.dtype; }
                             evalDecl(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                            /* Si tiene hermanos tambien seguimos con la evaluacion */
                             if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
                         }
                         _ => { println!("Es del tipo void o ninguno"); }
@@ -1026,10 +1036,24 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                         /* Obtenemos el id si es que existe */
                         let mut temp = tabla_simbolos.get(nodo.valor.clone());
                         if temp.token == TokenType::ERROR { process::exit(0x0100); }
-                        nodo.dtype = temp.dtype;
+                        (*nodo).dtype = temp.dtype;
 
                         /* Comprobamos que no hay conflictos con los tipos de valores */
+                        let tipo1 = nodo.hijo1.as_deref_mut().unwrap().dtype;
+                        if tipo1 != nodo.dtype { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden evalType()")); }
 
+                        /* Actualizamos el valor del identificador */
+                        let valor = nodo.hijo1.as_deref_mut().unwrap().valor.clone();
+                        let aux = Simbolo {
+                            variable: nodo.valor.clone(),
+                            lineano: nodo.lineano,
+                            token: TokenType::ID,
+                            dtype: nodo.dtype,
+                            valor: valor
+                        };
+                        tabla_simbolos.set(nodo.valor.clone(), aux);
+
+                        if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
                     }
                 },
                 _ => {
@@ -1053,14 +1077,14 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
         lineano: nodo.lineano,
         token: TokenType::ID,
         dtype: nodo.dtype,
-        valor: nodo.valor.clone()
+        valor: String::from("0")
     };
-    println!("Agregando nuevi simbolo: {:?}", nuevo_simbolo);
+    println!("Agregando nuevo simbolo: {:?}", nuevo_simbolo);
     tabla_simbolos.insertar(nodo.valor.clone(), nuevo_simbolo);
 
     /* Si tiene hermanos en la declaracion, pues tambien les daremos el mismo tipo de dato */
     if nodo.hermano.is_some() {
-        nodo.hermano.as_deref_mut().unwrap().dtype = nodo.dtype;
+        (*nodo).hermano.as_deref_mut().unwrap().dtype = nodo.dtype;
         evalDecl(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos);
     }
 }
@@ -1068,6 +1092,8 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 /* Evalua la asignacion, asegurandose de que el tipo final de estas expresiones sean
 del mismo tipo de dato, ademas hace las operaciones necesarias */
 fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
+
+    println!("EvalAssg() -> valor: {:?} | dtype: {:?} | token: {:?}", nodo.valor, nodo.dtype, nodo.token);
 
     match nodo.token {
         /* Si es cualquier operador, tienen que existir dos hijos */
@@ -1081,20 +1107,131 @@ fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                 evalAssg(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
 
                 /* Preguntamos si los dos dTypes son iguales o entra en conflicto */
-                if nodo.hijo1.as_deref().unwrap().dtype != nodo.hijo1.as_deref().unwrap().dtype {
+                let tipo_1 = nodo.hijo1.as_deref().unwrap().dtype;
+                let tipo_2 = nodo.hijo2.as_deref().unwrap().dtype;
+                if tipo_1 != tipo_2 {
                     error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden evalAssg()"));
                 }
 
+                /* Actualizamos el tipo de datos de la operacion para que la compare con el padre  */
+                (*nodo).dtype = nodo.hijo1.as_deref().unwrap().dtype;
+
+                /* Hacemos la operacion */
+                /* En caso de que sea del tipo entero */
+                if nodo.dtype == ExpType::INT {
+
+                    match nodo.token {
+
+                        TokenType::PLUS => {
+                            let x: i32 = 
+                            castInt(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) +
+                            castInt(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        TokenType::MINUS => {
+                            let x: i32 = 
+                            castInt(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) -
+                            castInt(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        TokenType::TIMES => {
+                            let x: i32 = 
+                            castInt(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) *
+                            castInt(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        TokenType::DIVISION => {
+                            let x: i32 = 
+                            castInt(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) /
+                            castInt(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        _ => {}
+
+                    }
+
+                } else { /* En caso de que sea del tipo float */
+
+                    match nodo.token {
+
+                        TokenType::PLUS => {
+                            let x: f32 = 
+                            castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) +
+                            castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        TokenType::MINUS => {
+                            let x: f32 = 
+                            castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) -
+                            castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        TokenType::TIMES => {
+                            let x: f32 = 
+                            castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) *
+                            castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        TokenType::DIVISION => {
+                            let x: f32 = 
+                            castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) /
+                            castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                            (*nodo).valor = x.to_string();
+                        },
+                        _ => {}
+
+                    }
+
+                }
+
+                /* Eliminamos a los hijos */
+                (*nodo).hijo1 = None;
+                (*nodo).hijo2 = None;
+                (*nodo).hijo3 = None;
+
+            } else {
+                error_semantico(nodo.clone(), String::from("no existen los suficientes hijos en la operacion evalAssg()"));
             }
 
+        },
+        TokenType::ID => {
+            let temp: Simbolo = tabla_simbolos.get(nodo.valor.clone());
+            if temp.token == TokenType::ERROR { process::exit(0x0100); }
+            (*nodo).dtype = temp.dtype;
         },
         _ => {}
     }
 
 }
 
+/* Pasamos un string a int */
+fn castInt(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> i32 {
+    let mut simbolo: Simbolo;
+    let mut s: String = nodo.valor.clone();
+    if nodo.token == TokenType::ID {
+        simbolo = tabla_simbolos.get(nodo.valor.clone());
+        if simbolo.dtype != ExpType::INT { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden castInt()")); }
+        s = simbolo.valor.clone();
+    }
+    println!("Imprimiendo valor del castInt() int: {}", s);
+    return s.parse::<i32>().unwrap();
+}
+
+/* Pasamos un string a float */
+fn castFloat(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> f32 {
+    let mut simbolo: Simbolo;
+    let mut s: String = nodo.valor.clone();
+    if nodo.token == TokenType::ID {
+        simbolo = tabla_simbolos.get(nodo.valor.clone());
+        if simbolo.dtype != ExpType::FLOAT { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden castFloat()")); }
+        s = simbolo.valor.clone();
+    }
+    println!("Imprimiendo valor del castFloat() float: {}", s);
+    return s.parse::<f32>().unwrap();
+}
+
 /* Imprimir los errores del analisis semantico */
 fn error_semantico(nodo: TreeNode, motivo: String) {
-    println!("Hay un error en el nodo: \n{:?}\nMotivo: {}", nodo, motivo);
+    println!("error_semantico()  -> Hay un error en el nodo\nvalor: {:?} | dtype: {:?} | token: {:?} | lineano: {}\nMotivo: {}", nodo.valor, nodo.dtype, nodo.token, nodo.lineano, motivo);
     process::exit(0x0100);
 }

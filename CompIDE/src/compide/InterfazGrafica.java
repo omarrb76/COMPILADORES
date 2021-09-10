@@ -32,7 +32,7 @@ import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 
 // Mostrar los mensajes del compilador en el GUI
-enum Compilador { LEXICO, ERROR, SINTACTICO }
+enum Compilador { LEXICO, ERROR, SINTACTICO, SEMANTICO }
 
 // CLASE PRINCIPAL
 public class InterfazGrafica extends JFrame {
@@ -557,7 +557,7 @@ public class InterfazGrafica extends JFrame {
             
             Compilador fase = Compilador.LEXICO;
 
-            String s, lex = "", err = "", sint = "";
+            String s, lex = "", err = "", sint = "", sem = "";
             Boolean primeraLinea = true;
             while ((s = stdInput.readLine()) != null) {
                 switch (fase) {
@@ -578,6 +578,9 @@ public class InterfazGrafica extends JFrame {
                         if (s.equals("------ SINTACTICO ARBOL   ------")){
                             primeraLinea = true;
                             fase = Compilador.SINTACTICO;
+                        } else if (s.equals("------ SEMANTICO ARBOL    ------")){
+                            primeraLinea = true;
+                            fase = Compilador.SEMANTICO;
                         } else {
                             if (primeraLinea) {
                                 err = s;
@@ -592,7 +595,20 @@ public class InterfazGrafica extends JFrame {
                             sint = s;
                             primeraLinea = false;
                         } else {
-                            sint += "\n" + s;
+                            if (s.equals("------ SEMANTICO ERRORES -------")){
+                                primeraLinea = true;
+                                fase = Compilador.ERROR;
+                            } else {
+                                sint += "\n" + s;
+                            }
+                        }
+                        break;
+                    case SEMANTICO:
+                        if (primeraLinea) {
+                            sem = s;
+                            primeraLinea = false;
+                        } else {
+                            sem += "\n" + s;
                         }
                         break;
                 }
@@ -601,6 +617,7 @@ public class InterfazGrafica extends JFrame {
             lexico.setText(lex);
             errores.setText(err);
             sintatico.setText(sint);
+            semantico.setText(sem);
 
             stdInput.close();
             proc.destroy();
