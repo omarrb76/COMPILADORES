@@ -3,6 +3,8 @@ program {
     bool n;
     //v = 9;
     //n = 4 + y;
+    n = not true;
+    n = true and false;
     s = 4;
     s = 4 + 5;
     n = false;

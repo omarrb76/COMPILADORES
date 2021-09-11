@@ -653,6 +653,7 @@ fn b_expresion() -> TreeNode {
     unsafe {
         while token_array[token_actual].token == TokenType::OR {
             let mut p: TreeNode = newExpNode();
+            p.dtype = ExpType::BOOL;
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(TokenType::OR);
@@ -669,6 +670,7 @@ fn b_term() -> TreeNode {
     unsafe {
         while token_array[token_actual].token == TokenType::AND {
             let mut p: TreeNode = newExpNode();
+            p.dtype = ExpType::BOOL;
             p.hijo1 = Some(Box::new(t.clone()));
             t = p.clone();
             coincide(TokenType::AND);
@@ -685,6 +687,7 @@ fn not_factor() -> TreeNode {
     unsafe {
         if token_array[token_actual].token == TokenType::NOT {
             t = newExpNode();
+            t.dtype = ExpType::BOOL;
             coincide(TokenType::NOT);
             t.hijo1 = Some(Box::new(b_factor()));
         } else {
@@ -942,7 +945,7 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiv
         // En esta seccion se agrega el texto corresponiente (el token que es)
         match nodo.tipo_nodo {
             NodeKind::EXP => {
-                token_string = format!("{}{}", token_string, nodo.valor);
+                token_string = format!("{}{} - {:?}", token_string, nodo.valor, nodo.dtype);
             },
             NodeKind::STMT => {
                 match nodo.kind_stmt {
@@ -952,8 +955,8 @@ fn imprimir_arbol(nodo: TreeNode, identacion: i32) { // Esta funcion es recursiv
                     StmtKind::PROGRAM   | 
                     StmtKind::READ      | 
                     StmtKind::WHILE     | 
-                    StmtKind::WRITE   => { token_string = format!("{}{} {:?}", token_string, nodo.valor, nodo.kind_stmt); }
-                    StmtKind::DECLARE => { token_string = format!("{}{} {:?}", token_string, nodo.valor, nodo.dtype); },
+                    StmtKind::WRITE   => { token_string = format!("{}{} - {:?}", token_string, nodo.valor, nodo.kind_stmt); }
+                    StmtKind::DECLARE => { token_string = format!("{}{} - {:?}", token_string, nodo.valor, nodo.dtype); },
                     _ => {}
                 }
             },
@@ -987,11 +990,6 @@ REDUCIR UN POCO EL ARBOL HACIENDO LAS OPERACIONES Y MOSTRAR LOS ERRORES QUE PUED
 
 fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 
-    /* (*nodo).hijo1 = None;
-    println!("Hola tontos {:?}", nodo.hijo1);
-    (*nodo).hijo2 = None;
-    return;
- */
     match nodo.tipo_nodo {
         NodeKind::EXP => {
             /* En caso de que sea una expresion */
@@ -1079,6 +1077,8 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
         dtype: nodo.dtype,
         valor: String::from("0")
     };
+    /* Si llegara a ser un booleano, lo iniciamos en true */
+    if nodo.dtype == ExpType::BOOL { nuevo_simbolo.valor = String::from("true"); }
     println!("Agregando nuevo simbolo: {:?}", nuevo_simbolo);
     tabla_simbolos.insertar(nodo.valor.clone(), nuevo_simbolo);
 
@@ -1194,12 +1194,150 @@ fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
             }
 
         },
+        TokenType::LT | TokenType::LTE | TokenType::GT | TokenType::GTE | TokenType::EQ | TokenType::DIFF | TokenType::AND | TokenType::OR  | TokenType::NOT => {
+            evalBoolExp(nodo, tabla_simbolos);
+        },
         TokenType::ID => {
             let temp: Simbolo = tabla_simbolos.get(nodo.valor.clone());
             if temp.token == TokenType::ERROR { process::exit(0x0100); }
             (*nodo).dtype = temp.dtype;
         },
         _ => {}
+    }
+
+}
+
+/* Evaluamos una expresion booleana */
+fn evalBoolExp(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
+
+    match nodo.token {
+        TokenType::NOT => {
+            /* Si tiene un hijo, entonces lo evaluamos y aplicamos el not */
+            if nodo.hijo1.is_some() {
+                evalBoolExp(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                let x = !castBool(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                /* Cambiamos el token y el valor */
+                if x { (*nodo).token = TokenType::TRUE; }
+                else { (*nodo).token = TokenType::FALSE; }
+                (*nodo).valor = x.to_string();
+                /* Eliminamos a los hijos */
+                (*nodo).hijo1 = None;
+            }
+        },
+        TokenType::ID => {
+            let temp: Simbolo = tabla_simbolos.get(nodo.valor.clone());
+            if temp.token == TokenType::ERROR { process::exit(0x0100); }
+            (*nodo).dtype = temp.dtype;
+        },
+        TokenType::LT | TokenType::LTE | TokenType::GT | TokenType::GTE => {
+            /* Si tiene hijos */
+            if nodo.hijo1.is_some() && nodo.hijo2.is_some() {
+
+                /* Evaluamos a los hijos */
+                evalBoolExp(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                evalBoolExp(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+
+                /* Se pueden comparar floats e ints pero no booleanos */
+                let tipo_1 = nodo.hijo1.as_deref().unwrap().dtype;
+                let tipo_2 = nodo.hijo2.as_deref().unwrap().dtype;
+                if tipo_1 == ExpType::BOOL || tipo_2 == ExpType::BOOL {
+                    error_semantico(nodo.clone(), String::from("no se puede comparar un booleano en la operacion de < | <= | >= | > evalBoolExp()"));
+                }
+
+                /* Vamos a agarrar los hijos pero les vamos a cambiar los tipos a float para que sean compatibles */
+                let hijo1 = nodo.hijo1.as_deref_mut().unwrap();
+                let hijo2 = nodo.hijo2.as_deref_mut().unwrap();
+                hijo1.dtype = ExpType::FLOAT;
+                hijo2.dtype = ExpType::FLOAT;
+
+                /* Hacemos la operacion */
+                match nodo.token {
+                    TokenType::LT => { 
+                        let x: bool = 
+                        castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) 
+                        < 
+                        castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                        if x { (*nodo).token = TokenType::TRUE; }
+                        else { (*nodo).token = TokenType::FALSE; }
+                        (*nodo).valor = x.to_string();
+                    },
+                    TokenType::LTE => {
+                        let x: bool = 
+                        castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) 
+                        <=
+                        castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                        if x { (*nodo).token = TokenType::TRUE; }
+                        else { (*nodo).token = TokenType::FALSE; }
+                        (*nodo).valor = x.to_string();
+                    },
+                    TokenType::GT => {
+                        let x: bool = 
+                        castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) 
+                        >
+                        castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                        if x { (*nodo).token = TokenType::TRUE; }
+                        else { (*nodo).token = TokenType::FALSE; }
+                        (*nodo).valor = x.to_string();
+                    },
+                    TokenType::GTE => {
+                        let x: bool = 
+                        castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) 
+                        >=
+                        castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                        if x { (*nodo).token = TokenType::TRUE; }
+                        else { (*nodo).token = TokenType::FALSE; }
+                        (*nodo).valor = x.to_string();
+                    },
+                    _ => {}
+                }
+
+                /* Eliminamos a los hijos */
+                (*nodo).hijo1 = None;
+                (*nodo).hijo2 = None;
+                (*nodo).hijo3 = None;
+            }
+        },
+        TokenType::EQ | TokenType::DIFF => {
+            /* Aqui es muy interesante porque el EQ y DIFF puede ser aplicado tanto para numeros (comparaciones), como expresiones booleanas */
+            
+        },
+        TokenType::AND | TokenType::OR => {
+            /* Si tiene hijos */
+            if nodo.hijo1.is_some() && nodo.hijo2.is_some() {
+
+                /* Evaluamos a los hijos */
+                evalBoolExp(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                evalBoolExp(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+
+                /* Se pueden comparar floats e ints pero no booleanos */
+                let tipo_1 = nodo.hijo1.as_deref().unwrap().dtype;
+                let tipo_2 = nodo.hijo2.as_deref().unwrap().dtype;
+                if tipo_1 != ExpType::BOOL && tipo_2 != ExpType::BOOL {
+                    error_semantico(nodo.clone(), String::from("los tipos de datos no son booleanos para la expresion AND u OR evalBoolExp()"));
+                }
+
+                /* Haceos la operacion */
+                if nodo.token == TokenType::AND {
+                    let x: bool = castBool(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) && castBool(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                    if x { (*nodo).token = TokenType::TRUE; }
+                    else { (*nodo).token = TokenType::FALSE; }
+                    (*nodo).valor = x.to_string();
+                } else { // OR
+                    let x: bool = castBool(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) || castBool(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                    if x { (*nodo).token = TokenType::TRUE; }
+                    else { (*nodo).token = TokenType::FALSE; }
+                    (*nodo).valor = x.to_string();
+                }
+
+                /* Eliminamos a los hijos */
+                (*nodo).hijo1 = None;
+                (*nodo).hijo2 = None;
+                (*nodo).hijo3 = None;
+            }
+        },
+        _ => {
+
+        }
     }
 
 }
@@ -1228,6 +1366,22 @@ fn castFloat(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> f32 {
     }
     println!("Imprimiendo valor del castFloat() float: {}", s);
     return s.parse::<f32>().unwrap();
+}
+
+/* Pasamos un string a bool */
+fn castBool(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> bool {
+    let mut simbolo: Simbolo;
+    let mut s: String = nodo.valor.clone();
+    if nodo.token == TokenType::ID {
+        simbolo = tabla_simbolos.get(nodo.valor.clone());
+        if simbolo.dtype != ExpType::BOOL { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden castFloat()")); }
+        s = simbolo.valor.clone();
+    }
+    println!("Imprimiendo valor del castFloat() float: {}", s);
+    if s == "true" { return true; }
+    else if s == "false" { return false; }
+    /* No deberia de poder llegar aqui, pero por si acaso */
+    return true;
 }
 
 /* Imprimir los errores del analisis semantico */
