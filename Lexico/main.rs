@@ -297,10 +297,11 @@ fn main() -> io::Result<()> {
     println!("------ SEMANTICO ERRORES -------");
     let mut tabla_simbolos: TablaDeSimbolos = TablaDeSimbolos { contenido: HashMap::new() };
     evalType(&mut t, &mut tabla_simbolos);
-    tabla_simbolos.imprimir();
 
     println!("------ SEMANTICO ARBOL    ------");
     imprimir_arbol(t.clone(), 0);
+    println!("------ TABLA SIMBOLOS     ------");
+    tabla_simbolos.imprimir();
 
     Ok(())
 
@@ -993,7 +994,7 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
     match nodo.tipo_nodo {
         NodeKind::EXP => {
             /* En caso de que sea una expresion */
-            println!("NodeKind del tipo EXP");
+            //println!("NodeKind del tipo EXP");
             match nodo.token {
                 TokenType::ID => {
                     
@@ -1003,7 +1004,7 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
         },
         NodeKind::STMT => {
             /* En caso de que sea un statement */
-            println!("NodeKind del tipo STMT: {:?}", nodo.kind_stmt);
+            //println!("NodeKind del tipo STMT: {:?}", nodo.kind_stmt);
             match nodo.kind_stmt {
                 /* Esta es la seccion de declaraciones */
                 StmtKind::DECLARE => {
@@ -1055,12 +1056,36 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                         if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
                     }
                 },
+                StmtKind::IF | StmtKind::WHILE => {
+                    if nodo.hijo1.is_some() {
+
+                        /* Evaluamos el booleano */
+                        evalBoolExp(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+
+                        /* Evaluamos los hermanos */
+                        if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
+                    }
+                },
+                StmtKind::DO => {
+                    /* Debe tener ambos hijos */
+                    if nodo.hijo1.is_some() && nodo.hijo2.is_some(){
+
+                        /* Evaluamos el primer hijo con bloque que seria evalType otra vez */
+                        evalType(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
+                        /* Y el segundo seria revisar el booleano */
+                        evalBoolExp(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+
+                        /* Evaluamos los hermanos */
+                        if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
+                    }
+                },
                 StmtKind::WRITE => {
                     if nodo.hijo1.is_some() {
 
                         /* Evaluamos la asignacion */
                         evalAssg(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
 
+                        /* Evaluamos los hermanos */
                         if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
                     }
                 },
@@ -1089,7 +1114,7 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
     };
     /* Si llegara a ser un booleano, lo iniciamos en true */
     if nodo.dtype == ExpType::BOOL { nuevo_simbolo.valor = String::from("true"); }
-    println!("Agregando nuevo simbolo: {:?}", nuevo_simbolo);
+    //println!("Agregando nuevo simbolo: {:?}", nuevo_simbolo);
     tabla_simbolos.insertar(nodo.valor.clone(), nuevo_simbolo);
 
     /* Si tiene hermanos en la declaracion, pues tambien les daremos el mismo tipo de dato */
@@ -1103,7 +1128,7 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 del mismo tipo de dato, ademas hace las operaciones necesarias */
 fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 
-    println!("EvalAssg() -> valor: {:?} | dtype: {:?} | token: {:?}", nodo.valor, nodo.dtype, nodo.token);
+    //println!("EvalAssg() -> valor: {:?} | dtype: {:?} | token: {:?}", nodo.valor, nodo.dtype, nodo.token);
 
     match nodo.token {
         /* Si es cualquier operador, tienen que existir dos hijos */
@@ -1388,11 +1413,10 @@ fn castInt(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> i32 {
     let mut s: String = nodo.valor.clone();
     if nodo.token == TokenType::ID {
         simbolo = tabla_simbolos.get(nodo.valor.clone());
-        println!("Holis Variable {:?} | Valor {:?}", simbolo.variable, simbolo.valor);
         if simbolo.dtype != ExpType::INT { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden castInt()")); }
         s = simbolo.valor.clone();
     }
-    println!("Imprimiendo valor del castInt() int: {}", s);
+    //println!("Imprimiendo valor del castInt() int: {}", s);
     return s.parse::<i32>().unwrap();
 }
 
@@ -1402,10 +1426,10 @@ fn castFloat(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> f32 {
     let mut s: String = nodo.valor.clone();
     if nodo.token == TokenType::ID {
         simbolo = tabla_simbolos.get(nodo.valor.clone());
-        if simbolo.dtype != ExpType::FLOAT { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden castFloat()")); }
+        /* A diferencia del int si es float vale madres que sea int, igual lo va a castear */
         s = simbolo.valor.clone();
     }
-    println!("Imprimiendo valor del castFloat() float: {}", s);
+    //println!("Imprimiendo valor del castFloat() float: {}", s);
     return s.parse::<f32>().unwrap();
 }
 
@@ -1418,7 +1442,7 @@ fn castBool(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> bool {
         if simbolo.dtype != ExpType::BOOL { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden castFloat()")); }
         s = simbolo.valor.clone();
     }
-    println!("Imprimiendo valor del castFloat() float: {}", s);
+    //println!("Imprimiendo valor del castFloat() float: {}", s);
     if s == "true" { return true; }
     else if s == "false" { return false; }
     /* No deberia de poder llegar aqui, pero por si acaso */

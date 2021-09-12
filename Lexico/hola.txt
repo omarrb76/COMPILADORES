@@ -8,9 +8,15 @@ program {
     s = 4;
     s = 4 + 5;
     n = false;
-	if (true or false and (x==5))then{
+	if (true and false and (x==5))then{
 		x = 5;
 	} else {
 		y = 5;
 	} fi
+    while (true and s == 5) {
+        write z;
+    }
+    do {
+        write y;
+    } until (true);
 }
