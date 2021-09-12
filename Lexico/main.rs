@@ -1038,7 +1038,8 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 
                         /* Comprobamos que no hay conflictos con los tipos de valores */
                         let tipo1 = nodo.hijo1.as_deref_mut().unwrap().dtype;
-                        if tipo1 != nodo.dtype { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden evalType()")); }
+                        if tipo1 == ExpType::INT && nodo.dtype == ExpType::FLOAT {} /* Esta condicional no hace nada, solo es para que no entre abajo */
+                        else if tipo1 != nodo.dtype { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden evalType()")); }
 
                         /* Actualizamos el valor del identificador */
                         let valor = nodo.hijo1.as_deref_mut().unwrap().valor.clone();
@@ -1050,6 +1051,15 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                             valor: valor
                         };
                         tabla_simbolos.set(nodo.valor.clone(), aux);
+
+                        if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
+                    }
+                },
+                StmtKind::WRITE => {
+                    if nodo.hijo1.is_some() {
+
+                        /* Evaluamos la asignacion */
+                        evalAssg(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
 
                         if nodo.hermano.is_some() { evalType(&mut nodo.hermano.as_deref_mut().unwrap(), tabla_simbolos); }
                     }
@@ -1109,12 +1119,12 @@ fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                 /* Preguntamos si los dos dTypes son iguales o entra en conflicto */
                 let tipo_1 = nodo.hijo1.as_deref().unwrap().dtype;
                 let tipo_2 = nodo.hijo2.as_deref().unwrap().dtype;
-                if tipo_1 != tipo_2 {
-                    error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden evalAssg()"));
+                /* Si una de las dos es float pues hacemos todo float */
+                if tipo_1 == ExpType::FLOAT || tipo_2 == ExpType::FLOAT {
+                    (*nodo).dtype = ExpType::FLOAT;
+                } else {
+                    (*nodo).dtype = ExpType::INT;
                 }
-
-                /* Actualizamos el tipo de datos de la operacion para que la compare con el padre  */
-                (*nodo).dtype = nodo.hijo1.as_deref().unwrap().dtype;
 
                 /* Hacemos la operacion */
                 /* En caso de que sea del tipo entero */
@@ -1198,9 +1208,20 @@ fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
             evalBoolExp(nodo, tabla_simbolos);
         },
         TokenType::ID => {
+            /* Buscamos si existe el identificador dentro de la tabla de simbolos */
             let temp: Simbolo = tabla_simbolos.get(nodo.valor.clone());
+            /* Si no existe nos salimos */
             if temp.token == TokenType::ERROR { process::exit(0x0100); }
+            /* Asignamos el valor */
+            (*nodo).valor = temp.valor.clone();
             (*nodo).dtype = temp.dtype;
+            /* Cambiamos el token de ser necesario (se generan conflictos con la funcion cast int o float si no le cambiamos el token) */
+            match temp.dtype {
+                ExpType::INT => { (*nodo).token = TokenType::NUMINT },
+                ExpType::FLOAT => { (*nodo).token = TokenType::NUMFLOAT },
+                ExpType::BOOL => { (*nodo).token = TokenType::BOOL },
+                _ => {}
+            }
         },
         _ => {}
     }
@@ -1229,7 +1250,7 @@ fn evalBoolExp(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
             if temp.token == TokenType::ERROR { process::exit(0x0100); }
             (*nodo).dtype = temp.dtype;
         },
-        TokenType::LT | TokenType::LTE | TokenType::GT | TokenType::GTE => {
+        TokenType::LT | TokenType::LTE | TokenType::GT | TokenType::GTE | TokenType::EQ | TokenType::DIFF => {
             /* Si tiene hijos */
             if nodo.hijo1.is_some() && nodo.hijo2.is_some() {
 
@@ -1288,6 +1309,24 @@ fn evalBoolExp(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                         else { (*nodo).token = TokenType::FALSE; }
                         (*nodo).valor = x.to_string();
                     },
+                    TokenType::EQ => {
+                        let x: bool = 
+                        castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) 
+                        ==
+                        castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                        if x { (*nodo).token = TokenType::TRUE; }
+                        else { (*nodo).token = TokenType::FALSE; }
+                        (*nodo).valor = x.to_string();
+                    },
+                    TokenType::DIFF => {
+                        let x: bool = 
+                        castFloat(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos) 
+                        !=
+                        castFloat(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
+                        if x { (*nodo).token = TokenType::TRUE; }
+                        else { (*nodo).token = TokenType::FALSE; }
+                        (*nodo).valor = x.to_string();
+                    },
                     _ => {}
                 }
 
@@ -1296,10 +1335,6 @@ fn evalBoolExp(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                 (*nodo).hijo2 = None;
                 (*nodo).hijo3 = None;
             }
-        },
-        TokenType::EQ | TokenType::DIFF => {
-            /* Aqui es muy interesante porque el EQ y DIFF puede ser aplicado tanto para numeros (comparaciones), como expresiones booleanas */
-            
         },
         TokenType::AND | TokenType::OR => {
             /* Si tiene hijos */
@@ -1333,7 +1368,12 @@ fn evalBoolExp(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                 (*nodo).hijo1 = None;
                 (*nodo).hijo2 = None;
                 (*nodo).hijo3 = None;
+            } else {
+                error_semantico(nodo.clone(), String::from("no existen los suficientes hijos en la operacion AND u OR evalBoolExp()"));
             }
+        },
+        TokenType::PLUS | TokenType::MINUS | TokenType::TIMES | TokenType::DIVISION => {
+            evalAssg(nodo, tabla_simbolos);
         },
         _ => {
 
@@ -1348,6 +1388,7 @@ fn castInt(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) -> i32 {
     let mut s: String = nodo.valor.clone();
     if nodo.token == TokenType::ID {
         simbolo = tabla_simbolos.get(nodo.valor.clone());
+        println!("Holis Variable {:?} | Valor {:?}", simbolo.variable, simbolo.valor);
         if simbolo.dtype != ExpType::INT { error_semantico(nodo.clone(), String::from("los tipos de datos no coinciden castInt()")); }
         s = simbolo.valor.clone();
     }

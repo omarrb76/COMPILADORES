@@ -1,8 +1,15 @@
 program {
     bool n;
     int x, y, z;
-    n = not false;
-    n = 6 < 5;
-    n = true or false;
+    float a;
     x = 4 + 5;
+    x = x + 1;
+    x = x + 2;
+    y = x;
+    a = 4 + 6.0;
+    a = (4 + 5);
+    write a;
+    write x + 4;
+    write y + 0.0;
+    a = 8 / 2.0;
 }
