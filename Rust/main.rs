@@ -165,6 +165,16 @@ impl TablaDeSimbolos {
     }
 }
 
+/************ PERTENECIENTE A LA GENERACIÓN DE CÓDIGO INTERMEDIO ***************/
+/* Para el generador de nodos intermedios, necesitamos saber en que numero de nodo temporal
+vamos para no repetir numeros, t0, t1, t2, ..., tn */
+static mut number_temp: usize = 0;
+
+/* Necesitamos saber en que etiqueta vamos para los altos de las herramientas de control del codigo,
+genera el LABEL L1, LABEL L2, ..., LABEL LN */
+static mut number_label: usize = 0;
+
+/************ MAIN ***************/
 fn main() -> io::Result<()> {
 
     // Obtenemos los parámetros del main
@@ -1465,4 +1475,22 @@ FUNCIONES DEL CÓDIGO INTERMEDIO DE TRES DIRECCIONES
 *
 */
 
+/* Devuelve un nombre para el nuevo nodo temporal */
+fn newTemp() -> String {
+    let mut nuevo: String = String::from("");
+    unsafe {
+        nuevo = format!("T{}", number_temp);
+        number_temp += 1;
+    }
+    return nuevo;
+}
 
+/* Devuelve un nombre para la etiqueta temporal "LABEL LN" */
+fn newLabel() -> String {
+    let mut nuevo: String = String::from("");
+    unsafe {
+        nuevo = format!("LABEL L{}", number_label);
+        number_label += 1;
+    }
+    return nuevo;
+}
