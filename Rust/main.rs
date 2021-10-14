@@ -1454,3 +1454,15 @@ fn error_semantico(nodo: TreeNode, motivo: String) {
     println!("error_semantico()  -> Hay un error en el nodo\nvalor: {:?} | dtype: {:?} | token: {:?} | lineano: {}\nMotivo: {}", nodo.valor, nodo.dtype, nodo.token, nodo.lineano, motivo);
     process::exit(0x0100);
 }
+
+/* 
+*
+*
+*
+FUNCIONES DEL CÓDIGO INTERMEDIO DE TRES DIRECCIONES 
+*
+*
+*
+*/
+
+
