@@ -1002,7 +1002,6 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
     match nodo.tipo_nodo {
         NodeKind::EXP => {
             /* En caso de que sea una expresion */
-            //println!("NodeKind del tipo EXP");
             match nodo.token {
                 TokenType::ID => {
                     
@@ -1012,7 +1011,6 @@ fn evalType(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
         },
         NodeKind::STMT => {
             /* En caso de que sea un statement */
-            //println!("NodeKind del tipo STMT: {:?}", nodo.kind_stmt);
             match nodo.kind_stmt {
                 /* Esta es la seccion de declaraciones */
                 StmtKind::DECLARE => {
@@ -1120,7 +1118,6 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
         token: TokenType::ID,
         dtype: nodo.dtype
     };
-    //println!("Agregando nuevo simbolo: {:?}", nuevo_simbolo);
     tabla_simbolos.insertar(nodo.valor.clone(), nuevo_simbolo);
 
     /* Si tiene hermanos en la declaracion, pues tambien les daremos el mismo tipo de dato */
@@ -1133,8 +1130,6 @@ fn evalDecl(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
 /* Evalua la asignacion, asegurandose de que el tipo final de estas expresiones sean
 del mismo tipo de dato, ademas hace las operaciones necesarias */
 fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
-
-    //println!("EvalAssg() -> valor: {:?} | dtype: {:?} | token: {:?}", nodo.valor, nodo.dtype, nodo.token);
 
     match nodo.token {
         /* Si es cualquier operador, tienen que existir dos hijos */
@@ -1172,13 +1167,6 @@ fn evalAssg(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
             if temp.token == TokenType::ERROR { process::exit(0x0100); }
             /* Asignamos el tipo */
             (*nodo).dtype = temp.dtype;
-            /* Cambiamos el token de ser necesario (se generan conflictos con la funcion cast int o float si no le cambiamos el token) */
-            match temp.dtype {
-                ExpType::INT => { (*nodo).token = TokenType::NUMINT },
-                ExpType::FLOAT => { (*nodo).token = TokenType::NUMFLOAT },
-                ExpType::BOOL => { (*nodo).token = TokenType::BOOL },
-                _ => {}
-            }
         },
         _ => {}
     }
@@ -1227,10 +1215,10 @@ fn evalBoolExp(nodo: &mut TreeNode, tabla_simbolos: &mut TablaDeSimbolos) {
                 evalBoolExp(&mut nodo.hijo1.as_deref_mut().unwrap(), tabla_simbolos);
                 evalBoolExp(&mut nodo.hijo2.as_deref_mut().unwrap(), tabla_simbolos);
 
-                /* Se pueden comparar floats e ints pero no booleanos */
+                /* Se pueden comparar booleanos unicamente */
                 let tipo_1 = nodo.hijo1.as_deref().unwrap().dtype;
                 let tipo_2 = nodo.hijo2.as_deref().unwrap().dtype;
-                if tipo_1 != ExpType::BOOL && tipo_2 != ExpType::BOOL {
+                if tipo_1 != ExpType::BOOL || tipo_2 != ExpType::BOOL {
                     error_semantico(nodo.clone(), String::from("los tipos de datos no son booleanos para la expresion AND u OR evalBoolExp()"));
                 }
 

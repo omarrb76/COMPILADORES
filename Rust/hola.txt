@@ -6,6 +6,8 @@ program {
     n = not true;
     n = true and false;
     s = 4;
+    n = 4 < 5.7;
+    n = true and n;
     s = 4 + 5;
     n = false;
 	if (true and false and (x==5))then{
