@@ -11,12 +11,17 @@ program {
 	if (true and false and (x==5))then{
 		x = 5;
 	} else {
+        y = x + 5;
 		y = 5;
 	} fi
     while (true and s == 5) {
         write z;
+        n = not false and true;
+        x = 8 + 9;
+        //x = n;
     }
     do {
         write y;
+        x = 8 + 9;
     } until (true);
 }
