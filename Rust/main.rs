@@ -50,7 +50,7 @@ struct Token {
 enum NodeKind { STMT, EXP, EMPTY }
 
 // Que tipo de statement estamos haciendo
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum StmtKind { PROGRAM, IF, WHILE, DO, READ, WRITE, ASSIGN, DECLARE, UNDEFINED }
 // Pasar StmtKind a String
 impl fmt::Display for StmtKind {
@@ -84,7 +84,12 @@ struct TreeNode {
     dtype: ExpType,
     lineano: i32,
     tipo_nodo: NodeKind,
-    kind_stmt: StmtKind
+    kind_stmt: StmtKind,
+    verdadero: String,
+    falso: String,
+    next: String,
+    code: String,
+    name: String
 }
 
 /************ PERTENECIENTE AL ANÁLISIS SEMÁNTICO ***************/
@@ -310,6 +315,10 @@ fn main() -> io::Result<()> {
     imprimir_arbol(t.clone(), 0);
     println!("------ TABLA SIMBOLOS     ------");
     tabla_simbolos.imprimir();
+
+    // Empieza la generación de código
+    println!("------ CODIGO INTERMEDIO  ------");
+    programa_code(&mut t);
 
     Ok(())
 
@@ -841,7 +850,12 @@ fn newExpNode() -> TreeNode {
         dtype: ExpType::VOID,
         lineano: unsafe { token_array[token_actual].linea },
         tipo_nodo: NodeKind::EXP,
-        kind_stmt: StmtKind::UNDEFINED
+        kind_stmt: StmtKind::UNDEFINED,
+        verdadero: String::from(""),
+        falso: String::from(""),
+        next: String::from(""),
+        code: String::from(""),
+        name: String::from("")
     };
     return t;
 }
@@ -850,18 +864,9 @@ fn newExpNode() -> TreeNode {
 // asignacion, bloque, sent-write, sent-read, repeticion, iteracion, seleccion
 fn newStmtNode(kind: StmtKind) -> TreeNode {
 
-    let mut t: TreeNode = TreeNode {
-        hijo1: None,
-        hijo2: None,
-        hijo3: None,
-        hermano: None,
-        valor: unsafe { token_array[token_actual].lexema.clone() },
-        token: unsafe { token_array[token_actual].token },
-        dtype: ExpType::VOID,
-        lineano: unsafe { token_array[token_actual].linea },
-        tipo_nodo: NodeKind::STMT,
-        kind_stmt: kind
-    };
+    let mut t: TreeNode = newExpNode();
+    t.tipo_nodo = NodeKind::STMT;
+    t.kind_stmt = kind;
     return t;
 
 }
@@ -869,18 +874,11 @@ fn newStmtNode(kind: StmtKind) -> TreeNode {
 // Funcion que crea un nodo de error (un nodo vacío, ya que no existe el null en RUST)
 fn newErrorNode() -> TreeNode {
 
-    let mut t: TreeNode = TreeNode {
-        hijo1: None,
-        hijo2: None,
-        hijo3: None,
-        hermano: None,
-        valor: unsafe { token_array[token_actual].lexema.clone() },
-        token: TokenType::ERROR,
-        dtype: ExpType::VOID,
-        lineano: unsafe { token_array[token_actual].linea },
-        tipo_nodo: NodeKind::EMPTY,
-        kind_stmt: StmtKind::UNDEFINED
-    };
+    let mut t: TreeNode = newExpNode();
+    t.token = TokenType::ERROR;
+    t.dtype = ExpType::VOID;
+    t.tipo_nodo = NodeKind::EMPTY;
+    t.kind_stmt = StmtKind::UNDEFINED;
     return t;
 
 }
@@ -899,7 +897,12 @@ fn newEmptyNode() -> TreeNode {
         dtype: ExpType::VOID,
         lineano: 0,
         tipo_nodo: NodeKind::EMPTY,
-        kind_stmt: StmtKind::UNDEFINED
+        kind_stmt: StmtKind::UNDEFINED,
+        verdadero: String::from(""),
+        falso: String::from(""),
+        next: String::from(""),
+        code: String::from(""),
+        name: String::from("")
     };
     return t;
 
@@ -1270,4 +1273,333 @@ fn newLabel() -> String {
         number_label += 1;
     }
     return nuevo;
+}
+
+/* Función inicial para la generación de código */
+fn programa_code(nodo: &mut TreeNode) {
+    /* Nomas por ahora */
+    println!("program");
+    /* Tiene la declaración de variables */
+    if nodo.hijo1.is_some() {
+        decl_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+        (*nodo).code = nodo.hijo1.as_deref_mut().unwrap().code.clone();
+    }
+    /* Tiene el código del programa */
+    if nodo.hijo2.is_some() {
+        p_s(&mut nodo.hijo2.as_deref_mut().unwrap(), String::from("program"));
+    }
+}
+
+/* gramatica de declararcion */
+fn decl_code(nodo: &mut TreeNode) {
+    /* Aqui se supone tendremos el código para evaluar cada una de las declaraciones, pero tengo que preguntarle al profe que pedo con eso */
+    (*nodo).code = format!("codigo de gramatica para el DECLARE");
+    println!("{}", (*nodo).code);
+}
+
+/* P -> S */
+fn p_s(nodo: &mut TreeNode, padre: String) {
+    
+    /* Creamos una nueva etiqueta */
+    (*nodo).next = newLabel();
+
+    match nodo.kind_stmt {
+        /* Esta es la seccion de declaraciones */
+        StmtKind::ASSIGN => { exp_code(nodo); },
+        StmtKind::IF => { seleccion_code(nodo); },
+        StmtKind::WHILE => { while_code(nodo); },
+        StmtKind::DO => { do_code(nodo); },
+        StmtKind::WRITE => { write_code(nodo); },
+        StmtKind::READ => { read_code(nodo); },
+        _ => {
+            println!("Default para el switch kind_stmt");
+        }
+    }
+
+    /* Pegamos el codigo */
+    (*nodo).code = format!("{}\n{}", nodo.code.clone(), nodo.next.clone());
+    /* Mostramos el codigo */
+    if padre == "program" { println!("{}", (*nodo).code); }
+
+    /* Si tiene hermanos obtenemos su codigo tambien */
+    if nodo.hermano.is_some() { p_s(&mut nodo.hermano.as_deref_mut().unwrap(), padre); }
+}
+
+/* exp1 -> id = exp2 */
+fn exp_code(nodo: &mut TreeNode) {
+
+    match nodo.token {
+
+        TokenType::PLUS | TokenType::MINUS | TokenType::TIMES | TokenType::DIVISION | TokenType::OR | TokenType::AND |
+        TokenType::LT | TokenType::LTE | TokenType::GT | TokenType::GTE | TokenType::EQ | TokenType::DIFF => {
+
+            (*nodo).name = newTemp();
+
+            exp_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+            exp_code(&mut nodo.hijo2.as_deref_mut().unwrap());
+
+            let mut signo: String = String::from("");
+
+            match nodo.token {
+                TokenType::PLUS => { signo = String::from("+") },
+                TokenType::MINUS => { signo = String::from("-") },
+                TokenType::TIMES => { signo = String::from("*") },
+                TokenType::DIVISION => { signo = String::from("/") },
+                TokenType::OR => { signo = String::from("or"); },
+                TokenType::AND => { signo = String::from("and"); },
+                TokenType::LT => { signo = String::from("<"); },
+                TokenType::LTE => { signo = String::from("<="); },
+                TokenType::GT => { signo = String::from(">"); },
+                TokenType::GTE => { signo = String::from(">="); },
+                TokenType::EQ => { signo = String::from("=="); },
+                TokenType::DIFF => { signo = String::from("!="); },
+                _ => {}
+            }
+            
+            (*nodo).code = format!("{}\n{}\n{} = {} {} {}",
+                nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+                nodo.hijo2.as_deref_mut().unwrap().code.clone(),
+                (*nodo).name.clone(),
+                nodo.hijo1.as_deref_mut().unwrap().name.clone(),
+                signo,
+                nodo.hijo2.as_deref_mut().unwrap().name.clone(),
+            );
+
+        },
+        TokenType::ID | TokenType::NUMINT | TokenType::NUMFLOAT | TokenType::TRUE | TokenType::FALSE => {
+            if nodo.kind_stmt == StmtKind::ASSIGN {
+
+                exp_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+                (*nodo).name = nodo.hijo1.as_deref_mut().unwrap().name.clone();
+                (*nodo).code = format!("{}\n{} = {}", nodo.hijo1.as_deref_mut().unwrap().code.clone(), (*nodo).valor.clone(), (*nodo).name);
+
+            } else {
+
+                (*nodo).name = nodo.valor.clone(); 
+
+            }
+        },
+        TokenType::NOT => {
+
+            (*nodo).name = newTemp();
+
+            exp_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+
+            (*nodo).code = format!("{}\n{} = not {}",
+                nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+                (*nodo).name.clone(),
+                nodo.hijo1.as_deref_mut().unwrap().name.clone(),
+            );
+
+        },
+        _ => {}
+
+    }
+
+}
+
+/* S -> if (B) S1 
+o  S -> if (B) S1 else S2 */
+fn seleccion_code(nodo: &mut TreeNode) {
+
+    nodo.hijo1.as_deref_mut().unwrap().verdadero = newLabel();
+
+    /* Si tiene un else */
+    if nodo.hijo3.is_some() {
+
+        nodo.hijo1.as_deref_mut().unwrap().falso = newLabel();
+        nodo.hijo2.as_deref_mut().unwrap().next = (*nodo).next.clone();
+        nodo.hijo3.as_deref_mut().unwrap().next = (*nodo).next.clone();
+
+        bool_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+        p_s(&mut nodo.hijo2.as_deref_mut().unwrap(), String::from("if"));
+        p_s(&mut nodo.hijo3.as_deref_mut().unwrap(), String::from("if"));
+
+        (*nodo).next = format!(
+            "{}\n{}\n{}\n{}\n{}",
+            nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+            nodo.hijo1.as_deref_mut().unwrap().verdadero.clone(),
+            nodo.hijo2.as_deref_mut().unwrap().code.clone(),
+            nodo.hijo1.as_deref_mut().unwrap().falso.clone(),
+            nodo.hijo3.as_deref_mut().unwrap().code.clone(),
+        );
+
+    } else { /* Si no tiene else */
+
+        nodo.hijo1.as_deref_mut().unwrap().falso = (*nodo).next.clone();
+        nodo.hijo2.as_deref_mut().unwrap().next = (*nodo).next.clone();
+
+        bool_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+        p_s(&mut nodo.hijo2.as_deref_mut().unwrap(), String::from("if"));
+
+        (*nodo).code = format!(
+            "{}\n{}\n{}",
+            nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+            nodo.hijo1.as_deref_mut().unwrap().verdadero.clone(),
+            nodo.hijo2.as_deref_mut().unwrap().code.clone(),
+        );
+
+    }
+
+}
+
+/* S -> while (B) S1 */
+fn while_code(nodo: &mut TreeNode) {
+
+    let begin = newLabel();
+    nodo.hijo1.as_deref_mut().unwrap().verdadero = newLabel();
+    nodo.hijo1.as_deref_mut().unwrap().falso = (*nodo).next.clone();
+    nodo.hijo2.as_deref_mut().unwrap().next = begin.clone();
+
+    bool_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+    p_s(&mut nodo.hijo2.as_deref_mut().unwrap(), String::from("while"));
+
+    (*nodo).code = format!(
+        "{}\n{}\n{}\n{}\ngoto {}",
+        begin.clone(),
+        nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+        nodo.hijo1.as_deref_mut().unwrap().verdadero.clone(),
+        nodo.hijo2.as_deref_mut().unwrap().code.clone(),
+        begin.clone()
+    );
+
+}
+
+/* do S1 while (B) */
+fn do_code(nodo: &mut TreeNode) {
+
+    nodo.hijo2.as_deref_mut().unwrap().verdadero = newLabel();
+    nodo.hijo2.as_deref_mut().unwrap().falso = (*nodo).next.clone();
+
+    p_s(&mut nodo.hijo1.as_deref_mut().unwrap(), String::from("while"));
+    bool_code(&mut nodo.hijo2.as_deref_mut().unwrap());
+
+    (*nodo).code = format!(
+        "{}\n{}\n{}",
+        nodo.hijo2.as_deref_mut().unwrap().verdadero.clone(),
+        nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+        nodo.hijo2.as_deref_mut().unwrap().code.clone()
+    );
+
+}
+
+/* Write code */
+fn write_code(nodo: &mut TreeNode) {
+    exp_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+    (*nodo).code = format!(
+        "{}\nwrite {}",
+        nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+        nodo.hijo1.as_deref_mut().unwrap().name.clone(),
+    );
+}
+
+/* Read code */
+fn read_code(nodo: &mut TreeNode) {
+    exp_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+    (*nodo).code = format!(
+        "{}\nread {}",
+        nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+        nodo.hijo1.as_deref_mut().unwrap().name.clone(),
+    );
+}
+
+/* Para los booleanos y corto circuito */
+fn bool_code(nodo: &mut TreeNode) {
+
+    match nodo.token {
+        
+        TokenType::OR => {
+
+            nodo.hijo1.as_deref_mut().unwrap().verdadero = (*nodo).verdadero.clone();
+            nodo.hijo1.as_deref_mut().unwrap().falso = newLabel();
+            nodo.hijo2.as_deref_mut().unwrap().verdadero = (*nodo).verdadero.clone();
+            nodo.hijo2.as_deref_mut().unwrap().falso = (*nodo).falso.clone();
+
+            bool_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+            bool_code(&mut nodo.hijo2.as_deref_mut().unwrap());
+
+            (*nodo).code = format!(
+                "{}\n{}\n{}",
+                nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+                nodo.hijo1.as_deref_mut().unwrap().falso.clone(),
+                nodo.hijo2.as_deref_mut().unwrap().code.clone()
+            );
+
+        },
+        TokenType::AND => {
+
+            nodo.hijo1.as_deref_mut().unwrap().verdadero = newLabel();
+            nodo.hijo1.as_deref_mut().unwrap().falso = (*nodo).falso.clone();
+            nodo.hijo2.as_deref_mut().unwrap().verdadero = (*nodo).verdadero.clone();
+            nodo.hijo2.as_deref_mut().unwrap().falso = (*nodo).falso.clone();
+
+            bool_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+            bool_code(&mut nodo.hijo2.as_deref_mut().unwrap());
+
+            (*nodo).code = format!(
+                "{}\n{}\n{}",
+                nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+                nodo.hijo1.as_deref_mut().unwrap().verdadero.clone(),
+                nodo.hijo2.as_deref_mut().unwrap().code.clone()
+            );
+
+        },
+        TokenType::NOT => {
+
+            nodo.hijo1.as_deref_mut().unwrap().verdadero = (*nodo).falso.clone();
+            nodo.hijo1.as_deref_mut().unwrap().falso = (*nodo).verdadero.clone();
+
+            bool_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+
+            (*nodo).code = format!(
+                "{}",
+                nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+            );
+
+        },
+        TokenType::LT | TokenType::LTE | TokenType::GT | TokenType::GTE | TokenType::EQ | TokenType::DIFF => {
+
+            let mut simbolo: String = String::from("");
+
+            match nodo.token {
+                TokenType::LT => { simbolo = String::from("<"); }
+                TokenType::LTE => { simbolo = String::from("<="); }
+                TokenType::GT => { simbolo = String::from(">"); }
+                TokenType::GTE => { simbolo = String::from(">="); }
+                TokenType::EQ => { simbolo = String::from("=="); }
+                TokenType::DIFF => { simbolo = String::from("!="); }
+                _ => {}
+            }
+
+            exp_code(&mut nodo.hijo1.as_deref_mut().unwrap());
+            exp_code(&mut nodo.hijo2.as_deref_mut().unwrap());
+
+            (*nodo).code = format!(
+                "{}\n{}\nif {} {} {} goto {}\ngoto {}",
+                nodo.hijo1.as_deref_mut().unwrap().code.clone(),
+                nodo.hijo2.as_deref_mut().unwrap().code.clone(),
+                nodo.hijo1.as_deref_mut().unwrap().name.clone(),
+                simbolo,
+                nodo.hijo2.as_deref_mut().unwrap().name.clone(),
+                (*nodo).verdadero.clone(),
+                (*nodo).falso.clone()
+            );
+
+        },
+        TokenType::TRUE => {
+            (*nodo).code = format!(
+                "goto {}",
+                (*nodo).verdadero.clone()
+            );
+        },
+        TokenType::FALSE => {
+            (*nodo).code = format!(
+                "goto {}",
+                (*nodo).falso.clone()
+            );
+        },
+        _ => {}
+
+    }
+
 }

@@ -3,7 +3,9 @@ program {
     bool n;
     //v = 9;
     //n = 4 + y;
+    x = 5;
     n = not true;
+    n = true;
     n = true and false;
     s = 4;
     n = 4 < 5.7;
