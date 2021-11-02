@@ -1,6 +1,11 @@
 program {
-	int x;
-
-    write x;
-
+	int x, y, z, s;
+    bool n;
+	while (true and s == 5) {
+        write z;
+        n = not false and true;
+        x = 8 + 9;
+        //x = n;
+    }
+    x = 6;
 }

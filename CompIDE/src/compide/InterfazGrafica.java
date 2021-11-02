@@ -32,7 +32,7 @@ import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
 
 // Mostrar los mensajes del compilador en el GUI
-enum Compilador { LEXICO, ERROR, SINTACTICO, SEMANTICO }
+enum Compilador { LEXICO, ERROR, SINTACTICO, SEMANTICO, INTERMEDIO }
 
 // CLASE PRINCIPAL
 public class InterfazGrafica extends JFrame {
@@ -557,7 +557,7 @@ public class InterfazGrafica extends JFrame {
             
             Compilador fase = Compilador.LEXICO;
 
-            String s, lex = "", err = "", sint = "", sem = "";
+            String s, lex = "", err = "", sint = "", sem = "", inter = "";
             Boolean primeraLinea = true;
             while ((s = stdInput.readLine()) != null) {
                 switch (fase) {
@@ -604,11 +604,25 @@ public class InterfazGrafica extends JFrame {
                         }
                         break;
                     case SEMANTICO:
+                        if (s.equals("------ CODIGO INTERMEDIO  ------")){
+                            primeraLinea = true;
+                            fase = Compilador.INTERMEDIO;
+                        }
+                        else {
+                            if (primeraLinea) {
+                                sem = s;
+                                primeraLinea = false;
+                            } else {
+                                sem += "\n" + s;
+                            }
+                        }
+                        break;
+                    case INTERMEDIO:
                         if (primeraLinea) {
-                            sem = s;
+                            inter = s;
                             primeraLinea = false;
                         } else {
-                            sem += "\n" + s;
+                            inter += "\n" + s;
                         }
                         break;
                 }
@@ -618,6 +632,7 @@ public class InterfazGrafica extends JFrame {
             errores.setText(err);
             sintatico.setText(sint);
             semantico.setText(sem);
+            codIn.setText(inter);
 
             stdInput.close();
             proc.destroy();

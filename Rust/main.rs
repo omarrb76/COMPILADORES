@@ -1277,12 +1277,11 @@ fn newLabel() -> String {
 
 /* Función inicial para la generación de código */
 fn programa_code(nodo: &mut TreeNode) {
-    /* Nomas por ahora */
+    /* Inicio del programa */
     println!("program");
     /* Tiene la declaración de variables */
     if nodo.hijo1.is_some() {
         decl_code(&mut nodo.hijo1.as_deref_mut().unwrap());
-        (*nodo).code = nodo.hijo1.as_deref_mut().unwrap().code.clone();
     }
     /* Tiene el código del programa */
     if nodo.hijo2.is_some() {
@@ -1292,9 +1291,19 @@ fn programa_code(nodo: &mut TreeNode) {
 
 /* gramatica de declararcion */
 fn decl_code(nodo: &mut TreeNode) {
-    /* Aqui se supone tendremos el código para evaluar cada una de las declaraciones, pero tengo que preguntarle al profe que pedo con eso */
-    (*nodo).code = format!("codigo de gramatica para el DECLARE");
-    println!("{}", (*nodo).code);
+    /*  Si tiene un hijo */
+    if nodo.hijo1.is_some() { decl_code(&mut nodo.hijo1.as_deref_mut().unwrap()); }
+    /* Si no tiene hijos, ya es un nodo de variable */
+    else {
+        (*nodo).code = format!(
+            "{:?} {}",
+            nodo.dtype,
+            nodo.valor
+        );
+        println!("{}", (*nodo).code);
+    }
+    /* Evaluamos los hermanos si es que tiene */
+    if nodo.hermano.is_some() { decl_code(&mut nodo.hermano.as_deref_mut().unwrap()); }
 }
 
 /* P -> S */
@@ -1302,6 +1311,9 @@ fn p_s(nodo: &mut TreeNode, padre: String) {
     
     /* Creamos una nueva etiqueta */
     (*nodo).next = newLabel();
+
+    /* Si tiene hermanos obtenemos su codigo tambien */
+    if nodo.hermano.is_some() && padre.clone() != "program" { p_s(&mut nodo.hermano.as_deref_mut().unwrap(), padre.clone()); }
 
     match nodo.kind_stmt {
         /* Esta es la seccion de declaraciones */
@@ -1317,12 +1329,20 @@ fn p_s(nodo: &mut TreeNode, padre: String) {
     }
 
     /* Pegamos el codigo */
+    /* Si no es el padre program, entonces solo pegamos el codigo sin mostrarlo */
     (*nodo).code = format!("{}\n{}", nodo.code.clone(), nodo.next.clone());
-    /* Mostramos el codigo */
-    if padre == "program" { println!("{}", (*nodo).code); }
-
-    /* Si tiene hermanos obtenemos su codigo tambien */
-    if nodo.hermano.is_some() { p_s(&mut nodo.hermano.as_deref_mut().unwrap(), padre); }
+    if padre.clone() != "program" { 
+        if nodo.hermano.is_some() {
+            (*nodo).code = format!("{}\n{}", nodo.code.clone(), nodo.hermano.as_deref_mut().unwrap().code.clone());
+        }
+    }
+    /* Sino, pegamos el codigo y mostramos */
+    else { 
+        //(*nodo).code = format!("{}\n{}", nodo.code.clone(), nodo.next.clone());
+        println!("{}", (*nodo).code);
+        /* Si tiene hermanos obtenemos su codigo tambien */
+        if nodo.hermano.is_some() { p_s(&mut nodo.hermano.as_deref_mut().unwrap(), padre.clone()); }
+    }
 }
 
 /* exp1 -> id = exp2 */
@@ -1415,11 +1435,12 @@ fn seleccion_code(nodo: &mut TreeNode) {
         p_s(&mut nodo.hijo2.as_deref_mut().unwrap(), String::from("if"));
         p_s(&mut nodo.hijo3.as_deref_mut().unwrap(), String::from("if"));
 
-        (*nodo).next = format!(
-            "{}\n{}\n{}\n{}\n{}",
+        (*nodo).code = format!(
+            "{}\n{}\n{}\ngoto {}\n{}\n{}",
             nodo.hijo1.as_deref_mut().unwrap().code.clone(),
             nodo.hijo1.as_deref_mut().unwrap().verdadero.clone(),
             nodo.hijo2.as_deref_mut().unwrap().code.clone(),
+            nodo.next.clone(),
             nodo.hijo1.as_deref_mut().unwrap().falso.clone(),
             nodo.hijo3.as_deref_mut().unwrap().code.clone(),
         );
